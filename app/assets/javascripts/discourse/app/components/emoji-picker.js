@@ -1,5 +1,5 @@
 import { inject as service } from "@ember/service";
-import { throttle, debounce, schedule } from "@ember/runloop";
+import { throttle, debounce, schedule, later } from "@ember/runloop";
 import Component from "@ember/component";
 import { on, observes } from "discourse-common/utils/decorators";
 import { findRawTemplate } from "discourse-common/lib/raw-templates";
@@ -10,7 +10,7 @@ import {
   emojiSearch
 } from "pretty-text/emoji";
 import { safariHacksDisabled } from "discourse/lib/utilities";
-import ENV, { INPUT_DELAY } from "discourse-common/config/environment";
+import { isTesting, INPUT_DELAY } from "discourse-common/config/environment";
 
 const PER_ROW = 11;
 function customEmojis() {
@@ -38,8 +38,6 @@ export default Component.extend({
       this.$picker.css({ width: "", left: "", bottom: "", display: "none" });
 
     this.$modal.removeClass("fadeIn");
-
-    clearTimeout(this._checkTimeout);
   },
 
   show() {
@@ -71,7 +69,6 @@ export default Component.extend({
   @on("init")
   _setInitialValues() {
     this.set("customEmojis", customEmojis());
-    this._checkTimeout = null;
     this.scrollPosition = 0;
     this.$visibleSections = [];
   },
@@ -199,6 +196,8 @@ export default Component.extend({
     if (!this.site.isMobileDevice) {
       this._bindHover();
     }
+
+    later(this, this._onScroll, 100);
   },
 
   _bindModalClick() {
@@ -224,7 +223,6 @@ export default Component.extend({
   _unbindEvents() {
     $(this.element).off();
     $(window).off("resize");
-    clearInterval(this._refreshInterval);
     $("#reply-control").off("div-resizing");
     $("html").off("mouseup.emoji-picker");
   },
@@ -373,12 +371,11 @@ export default Component.extend({
   },
 
   _bindSectionsScroll() {
-    let onScroll = () => {
-      debounce(this, this._checkVisibleSection, 50);
-    };
+    this.$list.on("scroll", this._onScroll.bind(this));
+  },
 
-    this.$list.on("scroll", onScroll);
-    this._refreshInterval = setInterval(onScroll, 100);
+  _onScroll() {
+    debounce(this, this._checkVisibleSection, 50);
   },
 
   _checkVisibleSection(force) {
@@ -423,6 +420,8 @@ export default Component.extend({
 
       this._loadVisibleSections();
     }
+
+    later(this, this._checkVisibleSection, 100);
   },
 
   _loadVisibleSections() {
@@ -526,7 +525,7 @@ export default Component.extend({
       this.$picker.css(_.merge(attributes, options));
     };
 
-    if (ENV.environment === "test" || !this.automaticPositioning) {
+    if (isTesting() || !this.automaticPositioning) {
       desktopPositioning();
       return;
     }

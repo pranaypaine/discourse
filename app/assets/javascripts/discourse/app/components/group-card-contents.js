@@ -1,4 +1,4 @@
-import { alias, match, gt, or } from "@ember/object/computed";
+import { alias, match, gt } from "@ember/object/computed";
 import Component from "@ember/component";
 import { setting } from "discourse/lib/computed";
 import discourseComputed from "discourse-common/utils/decorators";
@@ -27,11 +27,6 @@ export default Component.extend(CardContentsBase, CleansUp, {
   viewingTopic: match("currentPath", /^topic\./),
 
   showMoreMembers: gt("moreMembersCount", 0),
-  hasMembersOrIsMember: or(
-    "group.members",
-    "group.is_group_owner_display",
-    "group.is_group_user"
-  ),
 
   group: null,
 
@@ -56,7 +51,8 @@ export default Component.extend(CardContentsBase, CleansUp, {
         if (!group.flair_url && !group.flair_bg_color) {
           group.set("flair_url", "fa-users");
         }
-        return group.members.length < maxMembersToDisplay
+        return group.can_see_members &&
+          group.members.length < maxMembersToDisplay
           ? group.findMembers({ limit: maxMembersToDisplay }, true)
           : Promise.resolve();
       })

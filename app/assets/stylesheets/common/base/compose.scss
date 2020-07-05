@@ -98,7 +98,7 @@
     display: flex;
     align-items: center;
     .d-icon {
-      color: $primary-medium;
+      color: $primary-high;
     }
     .reply-details {
       max-width: calc(100% - 175px);
@@ -166,7 +166,7 @@
   }
 
   .whisper {
-    margin-right: 0.25em;
+    margin: 0 0.25em;
   }
 
   .unlist {

@@ -122,7 +122,8 @@ class TopicView
       if @page > 1
         "?page=#{@page}"
       else
-        page = ((@post_number - 1) / @limit) + 1
+        posts_count = unfiltered_posts.where("post_number <= ?", @post_number).count
+        page = ((posts_count - 1) / @limit) + 1
         page > 1 ? "?page=#{page}" : ""
       end
 
@@ -546,7 +547,7 @@ class TopicView
       columns = [:id]
 
       if !is_mega_topic?
-        columns << 'EXTRACT(DAYS FROM CURRENT_TIMESTAMP - created_at)::INT AS days_ago'
+        columns << 'EXTRACT(DAYS FROM CURRENT_TIMESTAMP - posts.created_at)::INT AS days_ago'
       end
 
       posts.pluck(*columns)

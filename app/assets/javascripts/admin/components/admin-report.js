@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import discourseComputed from "discourse-common/utils/decorators";
 import { makeArray } from "discourse-common/lib/helpers";
 import { alias, or, and, equal, notEmpty, not } from "@ember/object/computed";
@@ -8,8 +9,8 @@ import ReportLoader from "discourse/lib/reports-loader";
 import { exportEntity } from "discourse/lib/export-csv";
 import { outputExportResult } from "discourse/lib/export-result";
 import Report, { SCHEMA_VERSION } from "admin/models/report";
-import ENV from "discourse-common/config/environment";
 import { isPresent } from "@ember/utils";
+import { isTesting } from "discourse-common/config/environment";
 
 const TABLE_OPTIONS = {
   perPage: 8,
@@ -59,8 +60,6 @@ export default Component.extend({
   forcedModes: null,
   showAllReportsLink: false,
   filters: null,
-  startDate: null,
-  endDate: null,
   showTrend: false,
   showHeader: true,
   showTitle: true,
@@ -168,8 +167,8 @@ export default Component.extend({
     let reportKey = "reports:";
     reportKey += [
       dataSourceName,
-      ENV.environment === "test" ? "start" : startDate.replace(/-/g, ""),
-      ENV.environment === "test" ? "end" : endDate.replace(/-/g, ""),
+      isTesting() ? "start" : startDate.replace(/-/g, ""),
+      isTesting() ? "end" : endDate.replace(/-/g, ""),
       "[:prev_period]",
       this.get("reportOptions.table.limit"),
       // Convert all filter values to strings to ensure unique serialization
@@ -227,14 +226,18 @@ export default Component.extend({
 
   @action
   exportCsv() {
-    const customFilters = this.get("filters.customFilters") || {};
-    exportEntity("report", {
+    const args = {
       name: this.get("model.type"),
       start_date: this.startDate.toISOString(true).split("T")[0],
-      end_date: this.endDate.toISOString(true).split("T")[0],
-      category_id: customFilters.category,
-      group_id: customFilters.group
-    }).then(outputExportResult);
+      end_date: this.endDate.toISOString(true).split("T")[0]
+    };
+
+    const customFilters = this.get("filters.customFilters");
+    if (customFilters) {
+      Object.assign(args, customFilters);
+    }
+
+    exportEntity("report", args).then(outputExportResult);
   },
 
   @action

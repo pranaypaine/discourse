@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import { get } from "@ember/object";
 import { schedule } from "@ember/runloop";
 import { createWidget } from "discourse/widgets/widget";
@@ -11,11 +13,20 @@ import { addExtraUserClasses } from "discourse/helpers/user-avatar";
 import { scrollTop } from "discourse/mixins/scroll-top";
 import { h } from "virtual-dom";
 
+const _extraHeaderIcons = [];
+
+export function addToHeaderIcons(icon) {
+  _extraHeaderIcons.push(icon);
+}
+
 const dropdown = {
   buildClasses(attrs) {
+    let classes = attrs.classNames || [];
     if (attrs.active) {
-      return "active";
+      classes.push("active");
     }
+
+    return classes;
   },
 
   click(e) {
@@ -124,6 +135,7 @@ createWidget(
           {
             attributes: {
               href: attrs.user.get("path"),
+              title: attrs.user.get("name"),
               "data-auto-route": true
             }
           },
@@ -180,6 +192,26 @@ createWidget("header-icons", {
       return [];
     }
 
+    const icons = [];
+
+    if (_extraHeaderIcons) {
+      _extraHeaderIcons.forEach(icon => {
+        icons.push(this.attach(icon));
+      });
+    }
+
+    const search = this.attach("header-dropdown", {
+      title: "search.title",
+      icon: "search",
+      iconId: "search-button",
+      action: "toggleSearchMenu",
+      active: attrs.searchVisible,
+      href: getURL("/search"),
+      classNames: ["search-dropdown"]
+    });
+
+    icons.push(search);
+
     const hamburger = this.attach("header-dropdown", {
       title: "hamburger_menu",
       icon: "bars",
@@ -187,6 +219,8 @@ createWidget("header-icons", {
       active: attrs.hamburgerVisible,
       action: "toggleHamburger",
       href: "",
+      classNames: ["hamburger-dropdown"],
+
       contents() {
         let { currentUser } = this;
         if (currentUser && currentUser.reviewable_count) {
@@ -203,16 +237,8 @@ createWidget("header-icons", {
       }
     });
 
-    const search = this.attach("header-dropdown", {
-      title: "search.title",
-      icon: "search",
-      iconId: "search-button",
-      action: "toggleSearchMenu",
-      active: attrs.searchVisible,
-      href: Discourse.getURL("/search")
-    });
+    icons.push(hamburger);
 
-    const icons = [search, hamburger];
     if (attrs.user) {
       icons.push(
         this.attach("user-dropdown", {
@@ -297,17 +323,20 @@ export default createWidget("header", {
 
   html(attrs, state) {
     let contents = () => {
-      const panels = [
-        this.attach("header-buttons", attrs),
-        this.attach("header-icons", {
-          hamburgerVisible: state.hamburgerVisible,
-          userVisible: state.userVisible,
-          searchVisible: state.searchVisible,
-          ringBackdrop: state.ringBackdrop,
-          flagCount: attrs.flagCount,
-          user: this.currentUser
-        })
-      ];
+      const headerIcons = this.attach("header-icons", {
+        hamburgerVisible: state.hamburgerVisible,
+        userVisible: state.userVisible,
+        searchVisible: state.searchVisible,
+        ringBackdrop: state.ringBackdrop,
+        flagCount: attrs.flagCount,
+        user: this.currentUser
+      });
+
+      if (attrs.onlyIcons) {
+        return headerIcons;
+      }
+
+      const panels = [this.attach("header-buttons", attrs), headerIcons];
 
       if (state.searchVisible) {
         const contextType = this.searchContextType();

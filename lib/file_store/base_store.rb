@@ -76,13 +76,13 @@ module FileStore
       not_implemented
     end
 
-    def download(upload)
-      DistributedMutex.synchronize("download_#{upload.sha1}") do
+    def download(upload, max_file_size_kb: nil)
+      DistributedMutex.synchronize("download_#{upload.sha1}", validity: 3.minutes) do
         filename = "#{upload.sha1}#{File.extname(upload.original_filename)}"
         file = get_from_cache(filename)
 
         if !file
-          max_file_size_kb = [SiteSetting.max_image_size_kb, SiteSetting.max_attachment_size_kb].max.kilobytes
+          max_file_size_kb ||= [SiteSetting.max_image_size_kb, SiteSetting.max_attachment_size_kb].max.kilobytes
 
           url = upload.secure? ?
             Discourse.store.signed_url_for_path(upload.url) :
@@ -151,8 +151,14 @@ module FileStore
 
       # Remove all but CACHE_MAXIMUM_SIZE most recent files
       files = Dir.glob("#{CACHE_DIR}*")
-        .sort_by { |f| File.mtime(f) }
-        .slice(0...-CACHE_MAXIMUM_SIZE)
+      files.sort_by! do |f|
+        begin
+          File.mtime(f)
+        rescue Errno::ENOENT
+          Time.new(0)
+        end
+      end
+      files.pop(CACHE_MAXIMUM_SIZE)
 
       FileUtils.rm(files, force: true)
     end

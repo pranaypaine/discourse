@@ -164,6 +164,30 @@ describe User do
     end
   end
 
+  context 'enqueue_staff_welcome_message' do
+    let!(:first_admin) { Fabricate(:admin) }
+    let(:user) { Fabricate(:user) }
+
+    it 'enqueues message for admin' do
+      expect {
+        user.grant_admin!
+      }.to change { Jobs::SendSystemMessage.jobs.count }.by 1
+    end
+
+    it 'enqueues message for moderator' do
+      expect {
+        user.grant_moderation!
+      }.to change { Jobs::SendSystemMessage.jobs.count }.by 1
+    end
+
+    it 'skips the message if already an admin' do
+      user.update(admin: true)
+      expect {
+        user.grant_admin!
+      }.to change { Jobs::SendSystemMessage.jobs.count }.by 0
+    end
+  end
+
   context '.set_default_tags_preferences' do
     let(:tag) { Fabricate(:tag) }
 
@@ -873,6 +897,10 @@ describe User do
       SiteSetting.previous_visit_timeout_hours = 1
     end
 
+    after do
+      reset_last_seen_cache!(user)
+    end
+
     it "should act correctly" do
       expect(user.previous_visit_at).to eq(nil)
 
@@ -902,6 +930,10 @@ describe User do
     let(:user) { Fabricate(:user) }
     let!(:first_visit_date) { Time.zone.now }
     let!(:second_visit_date) { 2.hours.from_now }
+
+    after do
+      reset_last_seen_cache!(user)
+    end
 
     it "should update the last seen value" do
       expect(user.last_seen_at).to eq nil
@@ -976,7 +1008,9 @@ describe User do
 
     describe 'with no previous values' do
       after do
-        Discourse.redis.flushall
+        reset_last_seen_cache!(user)
+        unfreeze_time
+        reset_last_seen_cache!(user)
       end
 
       it "updates last_seen_at" do
@@ -1305,6 +1339,9 @@ describe User do
       let!(:user) { Fabricate(:user) }
       let!(:now) { Time.zone.now }
       before { user.update_last_seen!(now) }
+      after do
+        reset_last_seen_cache!(user)
+      end
 
       it "with existing UserVisit record, increments the posts_read value" do
         expect {
@@ -1565,20 +1602,15 @@ describe User do
 
     describe '#number_of_rejected_posts' do
       it 'counts rejected posts' do
-        post = Fabricate(:post, user: user)
-
-        Fabricate(:reviewable_queued_post, target: post, status: Reviewable.statuses[:rejected])
+        Fabricate(:reviewable_queued_post, created_by: user, status: Reviewable.statuses[:rejected])
 
         expect(user.number_of_rejected_posts).to eq(1)
       end
 
       it 'ignore non-rejected posts' do
-        post = Fabricate(:post, user: user)
-
-        Fabricate(:reviewable_queued_post, target: post, status: Reviewable.statuses[:approved])
+        Fabricate(:reviewable_queued_post, created_by: user, status: Reviewable.statuses[:approved])
 
         expect(user.number_of_rejected_posts).to eq(0)
-
       end
     end
   end
@@ -2001,8 +2033,8 @@ describe User do
     it "sets a random avatar when selectable avatars is enabled" do
       avatar1 = Fabricate(:upload)
       avatar2 = Fabricate(:upload)
-      SiteSetting.selectable_avatars_enabled = true
       SiteSetting.selectable_avatars = [avatar1.url, avatar2.url].join("\n")
+      SiteSetting.selectable_avatars_enabled = true
 
       user = Fabricate(:user)
       expect(user.uploaded_avatar_id).not_to be(nil)
@@ -2192,6 +2224,7 @@ describe User do
       UserAction.create!(user_id: user.id, action_type: UserAction::LIKE)
       UserAction.create!(user_id: -1, action_type: UserAction::LIKE, target_user_id: user.id)
       UserAction.create!(user_id: -1, action_type: UserAction::LIKE, acting_user_id: user.id)
+      Developer.create!(user_id: user.id)
 
       user.reload
 
@@ -2201,6 +2234,7 @@ describe User do
       expect(UserAction.where(target_user_id: user.id).length).to eq(0)
       expect(UserAction.where(acting_user_id: user.id).length).to eq(0)
       expect(PostAction.with_deleted.where(user_id: user.id).length).to eq(0)
+      expect(Developer.where(user_id: user.id).length).to eq(0)
     end
   end
 
@@ -2359,6 +2393,25 @@ describe User do
 
       expect(user.recent_time_read).to eq(60)
       expect(user2.recent_time_read).to eq(50)
+    end
+  end
+
+  def reset_last_seen_cache!(user)
+    Discourse.redis.del("user:#{user.id}:#{Time.zone.now.to_date}")
+  end
+
+  describe ".encoded_username" do
+    it "doesn't encoded ASCII usernames" do
+      user = Fabricate(:user, username: "John")
+      expect(user.encoded_username).to eq("John")
+      expect(user.encoded_username(lower: true)).to eq("john")
+    end
+
+    it "encodes Unicode characters" do
+      SiteSetting.unicode_usernames = true
+      user = Fabricate(:user, username: "Löwe")
+      expect(user.encoded_username).to eq("L%C3%B6we")
+      expect(user.encoded_username(lower: true)).to eq("l%C3%B6we")
     end
   end
 end

@@ -81,7 +81,7 @@ en:
       unrecognized_extension: "Unrecognized file extension: %{extension}"
     import_error:
       generic: An error occured while importing that theme
-      about_json: "Import Error: about.json does not exist, or is invalid"
+      about_json: "Import Error: about.json does not exist, or is invalid. Are you sure this is a Discourse Theme?"
       about_json_values: "about.json contains invalid values: %{errors}"
       modifier_values: "about.json modifiers contain invalid values: %{errors}"
       git: "Error cloning git repository, access is denied or repository is not found"
@@ -234,6 +234,10 @@ en:
     file_should_be_csv: "The uploaded file should be of csv format."
     max_rows: "First %{max_bulk_invites} invites has been sent. Try splitting the file in smaller parts."
     error: "There was an error uploading that file. Please try again later."
+
+  invite_link:
+    email_taken: "This email is already in use. If you already have an account please login or reset password."
+    max_redemptions_limit: "should be between 2 and %{max_limit}."
 
   topic_invite:
     failed_to_invite: "The user cannot be invited into this topic without a group membership in either one of the following groups: %{group_names}."
@@ -391,7 +395,7 @@ en:
       already_bookmarked_post: "You cannot bookmark the same post twice."
       cannot_set_past_reminder: "You cannot set a bookmark reminder in the past."
       cannot_set_reminder_in_distant_future: "You cannot set a bookmark reminder more than 10 years in the future."
-      time_must_be_provided: "time must be provided for all reminders except '%{reminder_type}'"
+      time_must_be_provided: "time must be provided for all reminders"
 
     reminders:
       at_desktop: "Next time I'm at my desktop"
@@ -431,6 +435,10 @@ en:
       trust_level_4: "trust_level_4"
     request_membership_pm:
       title: "Membership Request for @%{group_name}"
+    request_accepted_pm:
+      title: "You've been accepted into @%{group_name}"
+      body: |
+        Your request to enter @%{group_name} has been accepted and you are now a member.
     view_hidden_topic_request_reason: "I would like to join the group '%{group_name}', so I may access [this topic](%{topic_url})"
 
   education:
@@ -483,7 +491,7 @@ en:
 
       This topic is clearly important to you &ndash; you've posted more than %{percent}% of the replies here.
 
-      It could be even better if you got other people space to share their points of view, too. Can you invite them over?
+      It could be even better if you gave other people space to share their points of view, too. Can you invite them over?
 
     get_a_room: |
       ### Encourage everyone to get involved in the conversation
@@ -837,17 +845,20 @@ en:
     confirmed: "Your email has been updated."
     please_continue: "Continue to %{site_name}"
     error: "There was an error changing your email address. Perhaps the address is already in use?"
+    doesnt_exist: "That email address is not associated with your account."
     error_staged: "There was an error changing your email address. The address is already in use by a staged user."
     already_done: "Sorry, this confirmation link is no longer valid. Perhaps your email was already changed?"
     confirm: "Confirm"
 
     authorizing_new:
       title: "Confirm your new email"
-      description: "Please confirm you would like your new email address changed to:"
+      description: "Please confirm you would like your email address changed to:"
+      description_add: "Please confirm you would like to add an alternate email address:"
 
     authorizing_old:
       title: "Change your email address"
       description: "Please confirm your email address change"
+      description_add: "Please confirm you would like to add an alternate email address:"
       old_email: "Old email: %{email}"
       new_email: "New email: %{email}"
       almost_done_title: "Confirming new email address"
@@ -895,7 +906,7 @@ en:
       short_description: 'A violation of <a href="%{base_path}/guidelines">our community guidelines</a>'
       long_form: "flagged this as inappropriate"
     notify_user:
-      title: "Send @{{username}} a message"
+      title: "Send @%{username} a message"
       description: "I want to talk to this person directly and personally about their post."
       short_description: "I want to talk to this person directly and personally about their post."
       long_form: "messaged user"
@@ -1438,6 +1449,7 @@ en:
     category_search_priority_very_high_weight: "Weight applied to ranking for very high category search priority."
     allow_uncategorized_topics: "Allow topics to be created without a category. WARNING: If there are any uncategorized topics, you must recategorize them before turning this off."
     allow_duplicate_topic_titles: "Allow topics with identical, duplicate titles."
+    allow_duplicate_topic_titles_category: "Allow topics with identical, duplicate titles if the category is different. allow_duplicate_topic_titles must be false."
     unique_posts_mins: "How many minutes before a user can make a post with the same content again"
     educate_until_posts: "When the user starts typing their first (n) new posts, show the pop-up new user education panel in the composer."
     title: "The name of this site, as used in the title tag."
@@ -1448,7 +1460,6 @@ en:
     crawl_images: "Retrieve images from remote URLs to insert the correct width and height dimensions."
     download_remote_images_to_local: "Convert remote images to local images by downloading them; this prevents broken images."
     download_remote_images_threshold: "Minimum disk space necessary to download remote images locally (in percent)"
-    download_remote_images_max_days_old: "Don't download remote images for posts that are more than n days old."
     disabled_image_download_domains: "Remote images will never be downloaded from these domains. Pipe-delimited list."
     editing_grace_period: "For (n) seconds after posting, editing will not create a new version in the post history."
     editing_grace_period_max_diff: "Maximum number of character changes allowed in editing grace period, if more changed store another post revision (trust level 0 and 1)"
@@ -1467,6 +1478,7 @@ en:
     exclude_rel_nofollow_domains: "A list of domains where nofollow should not be added to links. example.com will automatically allow sub.example.com as well. As a minimum, you should add the domain of this site to help web crawlers find all content. If other parts of your website are at other domains, add those too."
 
     post_excerpt_maxlength: "Maximum length of a post excerpt / summary."
+    topic_excerpt_maxlength: "Maximum length of a topic excerpt / summary, generated from the first post in a topic."
     show_pinned_excerpt_mobile: "Show excerpt on pinned topics in mobile view."
     show_pinned_excerpt_desktop: "Show excerpt on pinned topics in desktop view."
     post_onebox_maxlength: "Maximum length of a oneboxed Discourse post in characters."
@@ -1578,6 +1590,7 @@ en:
     moderators_view_emails: "Allow moderators to view user emails"
     prioritize_username_in_ux: "Show username first on user page, user card and posts (when disabled name is shown first)"
     enable_rich_text_paste: "Enable automatic HTML to Markdown conversion when pasting text into the composer. (Experimental)"
+    send_old_credential_reminder_days: "Remind about old credentials after days"
 
     email_token_valid_hours: "Forgot password / activate account tokens are valid for (n) hours."
 
@@ -1670,7 +1683,7 @@ en:
     s3_backup_bucket: "The remote bucket to hold backups. WARNING: Make sure it is a private bucket."
     s3_endpoint: "The endpoint can be modified to backup to an S3 compatible service like DigitalOcean Spaces or Minio. WARNING: Leave blank if using AWS S3."
     s3_configure_tombstone_policy: "Enable automatic deletion policy for tombstone uploads. IMPORTANT: If disabled, no space will be reclaimed after uploads are deleted."
-    s3_disable_cleanup: "Disable the removal of backups from S3 when removed locally."
+    s3_disable_cleanup: "Prevent removal of old backups from S3 when there are more backups than the maximum allowed."
     enable_s3_inventory: "Generate reports and verify uploads using Amazon S3 inventory. IMPORTANT: requires valid S3 credentials (both access key id & secret access key)."
     backup_time_of_day: "Time of day UTC when the backup should occur."
     backup_with_uploads: "Include uploads in scheduled backups. Disabling this will only backup the database."
@@ -1708,6 +1721,8 @@ en:
 
     max_post_deletions_per_minute: "Maximum number of posts a user can delete per minute."
     max_post_deletions_per_day: "Maximum number of posts a user can delete per day."
+
+    invite_link_max_redemptions_limit: "Maximum redemptions allowed for invite links can't be more than this value."
 
     alert_admins_if_errors_per_minute: "Number of errors per minute in order to trigger an admin alert. A value of 0 disables this feature. NOTE: requires restart."
     alert_admins_if_errors_per_hour: "Number of errors per hour in order to trigger an admin alert. A value of 0 disables this feature. NOTE: requires restart."
@@ -2117,6 +2132,7 @@ en:
     returning_user_notice_tl: "Minimum trust level required to see returning user post notices."
     returning_users_days: "How many days should pass before a user is considered to be returning."
     enable_page_publishing: "Allow staff members to publish topics to new URLs with their own styling."
+    show_published_pages_login_required: "Anonymous users can see published pages, even when login is required."
 
     default_email_digest_frequency: "How often users receive summary emails by default."
     default_include_tl0_in_digests: "Include posts from new users in summary emails by default. Users can change this in their preferences."
@@ -2191,7 +2207,7 @@ en:
     shared_drafts_category: "Enable the Shared Drafts feature by designating a category for topic drafts. Topics in this category will be suppressed from topic lists for staff users."
 
     push_notifications_prompt: "Display user consent prompt."
-    push_notifications_icon: "The badge icon that appears in the notification corner. Required size is 96 × 96."
+    push_notifications_icon: "The badge icon that appears in the notification corner. A 96×96 monochromatic PNG with transparency is recommended."
 
     short_title: "The short title will be used on the user's home screen, launcher, or other places where space may be limited. It should be limited to 12 characters."
 
@@ -2239,6 +2255,7 @@ en:
       max_username_length_exists: "You cannot set the maximum username length below the longest username (%{username})."
       max_username_length_range: "You cannot set the maximum below the minimum."
       invalid_hex_value: "Color values have to be 6-digit hexadecimal codes."
+      empty_selectable_avatars: "You must first upload at least two selectable avatars before enabling this setting."
       category_search_priority:
         very_low_weight_invalid: "You cannot set the weight to be greater than 'category_search_priority_low_weight'."
         low_weight_invalid: "You cannot set the weight to be greater or equal to 1 or smaller than 'category_search_priority_very_low_weight'."
@@ -2385,6 +2402,7 @@ en:
     not_activated: "You can't log in yet. We sent an activation email to you. Please follow the instructions in the email to activate your account."
     not_allowed_from_ip_address: "You can't log in as %{username} from that IP address."
     admin_not_allowed_from_ip_address: "You can't log in as admin from that IP address."
+    reset_not_allowed_from_ip_address: "You can't request a password reset from that IP address."
     suspended: "You can't log in until %{date}."
     suspended_with_reason: "Account suspended until %{date}: %{reason}"
     errors: "%{errors}"
@@ -2445,6 +2463,7 @@ en:
       must_not_contain_two_special_chars_in_seq: "must not contain a sequence of 2 or more special chars (.-_)"
       must_not_end_with_confusing_suffix: "must not end with a confusing suffix like .json or .png etc."
     email:
+      invalid: "is invalid."
       not_allowed: "is not allowed from that email provider. Please use another email address."
       blocked: "is not allowed."
       revoked: "Won't be sending emails to '%{email}' until %{date}."
@@ -3032,7 +3051,7 @@ en:
       text_body_template: |
         We're sorry, but your email message to %{destination} (titled %{former_title}) didn't work.
 
-        None of the destination email addresses are recognized, or the Message-ID header in the email has been modified. Please make sure that you are sending to the correct email address provided by staff.
+        Do you use more than one email address? Did you reply from a different email address? Email replies require that you use the same email address when replying. Alternately, the Message-ID header in the email may have been modified.
 
     email_reject_old_destination:
       title: "Email Reject Old Destination"
@@ -3092,6 +3111,16 @@ en:
         We're sorry, but your email message to %{destination} (titled %{former_title}) didn't work.
 
         You don't have permissions to reply to the topic. If you believe this is an error, [contact a staff member](%{base_url}/about).
+
+    email_reject_reply_to_digest:
+      title: "Email Reject Reply To Summary"
+      subject_template: "[%{email_prefix}] Email issue -- Reply to Summary"
+      text_body_template: |
+        We're sorry, but your email message to %{destination} (titled %{former_title}) didn't work.
+
+        You replied to a Summary email, which is not accepted.
+
+        If you believe this is an error, [contact a staff member](%{base_url}/about).
 
     email_error_notification:
       title: "Email Error Notification"
@@ -3651,6 +3680,18 @@ en:
 
         %{base_url}/u/confirm-old-email/%{email_token}
 
+    confirm_old_email_add:
+      title: "Confirm Old Email (Add)"
+      subject_template: "[%{email_prefix}] Confirm your current email address"
+      text_body_template: |
+        Before we can add a new email address, we need you to confirm that you control
+        the current email account. After you complete this step, we will have you confirm
+        the new email address.
+
+        Confirm your current email address for %{site_name} by clicking on the following link:
+
+        %{base_url}/u/confirm-old-email/%{email_token}
+
     notify_old_email:
       title: "Notify Old Email"
       subject_template: "[%{email_prefix}] Your email address has been changed"
@@ -3660,6 +3701,18 @@ en:
         a site administrator.
 
         Your email address has been changed to:
+
+        %{new_email}
+
+    notify_old_email_add:
+      title: "Notify Old Email (Add)"
+      subject_template: "[%{email_prefix}] A new email address has been added"
+      text_body_template: |
+        This is an automated message to let you know that an email address for
+        %{site_name} has been added. If this was done in error, please contact
+        a site administrator.
+
+        Your added email address is:
 
         %{new_email}
 
@@ -3721,6 +3774,9 @@ en:
         If this was you, great! There’s nothing else you need to do.
 
         If this was not you, please [review your existing sessions](%{base_url}/my/preferences/account) and consider changing your password.
+
+  page_forbidden:
+    title: "Oops! That page is private."
 
   page_not_found:
     title: "Oops! That page doesn’t exist or is private."
@@ -3787,6 +3843,7 @@ en:
     user_email_user_suspended: "user was suspended"
     user_email_already_read: "user has already read this post"
     user_email_access_denied: "user is not allowed to see this post"
+    user_email_no_email: "No email associated with user id %{user_id}"
     sender_message_blank: "message is blank"
     sender_message_to_blank: "message.to is blank"
     sender_text_part_body_blank: "text_part.body is blank"
@@ -4372,7 +4429,7 @@ en:
         This badge is granted when you use all %{max_likes_per_day} of your daily likes for 5 days. Thanks for taking the time actively encouraging the best conversations every day!
     crazy_in_love:
       name: Crazy in Love
-      description: Used 50 likes in a day 20 times
+      description: Used %{max_likes_per_day} likes in a day 20 times
       long_description: |
         This badge is granted when you use all %{max_likes_per_day} of your daily likes for 20 days. Wow! You’re a role model for encouraging your fellow community members!
     thank_you:
@@ -4799,5 +4856,20 @@ en:
   email_style:
     html_missing_placeholder: "The html template must include %{placeholder}"
 
+  notification_level:
+    ignore_error: "Sorry, you can't ignore that user."
+    mute_error: "Sorry, you can't mute that user."
+
   discord:
     not_in_allowed_guild: "Authentication failed. You are not a member of a permitted Discord guild."
+
+  old_keys_reminder:
+    title: "Reminder about old credentials"
+    body: |
+      Hello! This is a routine yearly security reminder from your Discourse instance.
+
+      As a courtesy, we wanted to let you know that the following credentials used on your Discourse instance have not been updated in more than two years:
+
+      %{keys}
+
+      No action is required at this time, however, it is considered good security practice to cycle all your important credentials every few years.

@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import { alias } from "@ember/object/computed";
 import { scheduleOnce } from "@ember/runloop";
 import Component from "@ember/component";
@@ -179,7 +180,7 @@ export default Component.extend({
     this.set("docked", isDocked);
 
     const $replyArea = $("#reply-control .reply-area");
-    if ($replyArea && $replyArea.length > 0 && wrapperDir === "left") {
+    if ($replyArea && $replyArea.length > 0) {
       $wrapper.css(wrapperDir, `${$replyArea.offset().left}px`);
     } else {
       $wrapper.css(wrapperDir, "1em");

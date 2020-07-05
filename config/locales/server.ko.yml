@@ -45,7 +45,6 @@ ko:
       unrecognized_extension: "인식 할 수없는 파일 확장자 : %{extension}"
     import_error:
       generic: 해당 테마를 가져 오는 중 오류가 발생했습니다
-      about_json: "가져 오기 오류 : about.json이 존재하지 않거나 유효하지 않습니다"
       about_json_values: "about.json에 유효하지 않은 값이 있습니다 : %{errors}"
       modifier_values: "about.json 수정 자에 유효하지 않은 값이 있습니다 : %{errors}"
       git: "자식 저장소 복제 오류, 액세스가 거부되었거나 저장소를 찾을 수 없음"
@@ -302,7 +301,6 @@ ko:
       already_bookmarked_post: "동일한 게시물을 두 번 북마크 할 수 없습니다."
       cannot_set_past_reminder: "과거에는 북마크 미리 알림을 설정할 수 없습니다."
       cannot_set_reminder_in_distant_future: "앞으로 10 년 이상 책갈피 알림을 설정할 수 없습니다."
-      time_must_be_provided: "&#39;%{reminder_type}&#39;을 제외한 모든 알림에 시간을 제공해야합니다."
     reminders:
       at_desktop: "다음에 저는 데스크탑에 있습니다"
       later_today: "오늘 늦게"
@@ -651,7 +649,6 @@ ko:
     confirm: "확인"
     authorizing_new:
       title: "새 이메일 확인"
-      description: "새 이메일 주소가 다음으로 변경되었는지 확인하십시오."
     authorizing_old:
       title: "이메일 주소 변경"
       description: "이메일 주소 변경을 확인하십시오"
@@ -699,7 +696,7 @@ ko:
       short_description: '<a href="%{base_path}/guidelines">커뮤니티 지침</a> 위반'
       long_form: "부적절함으로 신고하기"
     notify_user:
-      title: "@{{username}} 님에게 메시지를 보냅니다"
+      title: "@%{username} 님에게 메시지를 보냅니다"
       description: "이 사용자와 게시물에 대해 직접 개인적으로 이야기하고 싶습니다."
       short_description: "이 사용자와 게시물에 대해 직접 개인적으로 이야기하고 싶습니다."
       long_form: "메세지한 유저"
@@ -1237,7 +1234,6 @@ ko:
     crawl_images: "제대로된 넓이와 높이를 추가하기 위해, 원격 URL로 부터 이미지를 회수해온다."
     download_remote_images_to_local: "이미지를 다운로드하면 원격 이미지를 로컬이미지로 변경. 이미지가 깨지는 것을 막을 수 있습니다."
     download_remote_images_threshold: "원격의 이미지를 로컬에 다운받기 위한 최소 디스크 공간(%)"
-    download_remote_images_max_days_old: "n일이 지난 후에는 포스트에 원격 이미지를 다운로드하지 않도록 설정"
     disabled_image_download_domains: "이 도메인을 통해서 원격 이미지를 다운로드 하지 않는다. ` | `를 구분자로 한 리스트"
     editing_grace_period: "글 작성 후, 편집해도 히스토리에 남기지 않는 시간 (단위: 초)"
     editing_grace_period_max_diff: "다른 변경 후 상점 (신뢰 레벨 0 및 1)을 더 많이 변경 한 경우 유예 기간 편집에 허용되는 최대 문자 변경 수"
@@ -1430,7 +1426,6 @@ ko:
     s3_backup_bucket: "백업본을 유지할 s3 버켓 이름. 주의 : 프라이빗 버켓인지 반드시 확인해야하세요."
     s3_endpoint: "엔드 포인트는 DigitalOcean Spaces 또는 Minio와 같은 S3 호환 서비스에 백업하도록 수정할 수 있습니다. 경고 : AWS S3를 사용하는 경우 비워 두십시오."
     s3_configure_tombstone_policy: "삭제 표시 업로드에 대한 자동 삭제 정책을 사용하십시오. 중요 : 비활성화하면 업로드가 삭제 된 후 공간이 회수되지 않습니다."
-    s3_disable_cleanup: "로컬에서 백업 삭제 시 S3에서 백업 제거하는 기능 해제"
     enable_s3_inventory: "Amazon S3 인벤토리를 사용하여 보고서를 생성하고 업로드를 확인하십시오. 중요 : 유효한 S3 자격 증명 (액세스 키 ID 및 비밀 액세스 키 모두)이 필요합니다."
     backup_time_of_day: "백업이 실행되어야 할 UTC 시간"
     backup_with_uploads: "스케쥴링된 백업을 실행할 때 업로드된 자료도 포함. 해제하면 데이터베이스만 백업합니다."
@@ -1828,7 +1823,6 @@ ko:
     city_for_disputes: "분쟁의 도시"
     shared_drafts_category: "주제 초안의 범주를 지정하여 공유 초안 기능을 사용하십시오. 이 범주의 주제는 직원 사용자의 주제 목록에서 표시되지 않습니다."
     push_notifications_prompt: "사용자 동의 프롬프트를 표시합니다."
-    push_notifications_icon: "알림 코너에 나타나는 배지 아이콘. 필요한 크기는 96 × 96입니다."
     short_title: "짧은 제목은 사용자의 홈 화면, 실행기 또는 공간이 제한 될 수있는 다른 장소에서 사용됩니다. 12 자로 제한되어야합니다."
     dashboard_general_tab_activity_metrics: "일반 탭에서 활동 메트릭으로 표시 할 보고서를 선택하십시오."
     gravatar_name: "Gravatar 제공 업체 이름"
@@ -2715,7 +2709,6 @@ ko:
       description: "중고 %{max_likes_per_day} 좋아하는 하루에 5 번"
     crazy_in_love:
       name: 사랑밖에 모르는 바보
-      description: 20번이나 좋아요 50개를 보냈습니다
     thank_you:
       name: 고마워요
       description: 10개의 포스트를 '좋아요'하고 20개의 '좋아요'를 받았습니다

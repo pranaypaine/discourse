@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import discourseComputed from "discourse-common/utils/decorators";
 import { emojiUnescape } from "discourse/lib/text";
 import Category from "discourse/models/category";
@@ -69,11 +71,16 @@ const NavItem = EmberObject.extend({
     return mode + name.replace(" ", "-");
   },
 
-  @discourseComputed("name", "category", "topicTrackingState.messageCount")
-  count(name, category) {
+  @discourseComputed(
+    "name",
+    "category",
+    "tagId",
+    "topicTrackingState.messageCount"
+  )
+  count(name, category, tagId) {
     const state = this.topicTrackingState;
     if (state) {
-      return state.lookupCount(name, category);
+      return state.lookupCount(name, category, tagId);
     }
   }
 });
@@ -104,7 +111,7 @@ NavItem.reopenClass({
   extraNavItemDescriptors: [],
 
   pathFor(filterType, context) {
-    let path = Discourse.getURL("");
+    let path = getURL("");
     let includesCategoryContext = false;
     let includesTagContext = false;
 
@@ -272,12 +279,17 @@ export function addNavItem(item) {
   NavItem.extraNavItemDescriptors.push(item);
 }
 
-Object.defineProperty(Discourse, "NavItem", {
-  get() {
-    deprecated("Import the NavItem class instead of using Discourse.NavItem", {
-      since: "2.4.0",
-      dropFrom: "2.5.0"
-    });
-    return NavItem;
-  }
-});
+if (typeof Discourse !== "undefined") {
+  Object.defineProperty(Discourse, "NavItem", {
+    get() {
+      deprecated(
+        "Import the NavItem class instead of using Discourse.NavItem",
+        {
+          since: "2.4.0",
+          dropFrom: "2.5.0"
+        }
+      );
+      return NavItem;
+    }
+  });
+}

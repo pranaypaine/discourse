@@ -1,6 +1,8 @@
+import I18n from "I18n";
 import { escape } from "pretty-text/sanitizer";
 import toMarkdown from "discourse/lib/to-markdown";
 import Handlebars from "handlebars";
+import { default as getURL, getURLWithCDN } from "discourse-common/lib/get-url";
 
 const homepageSelector = "meta[name=discourse_current_homepage]";
 
@@ -23,6 +25,10 @@ export function translateSize(size) {
 }
 
 export function escapeExpression(string) {
+  if (!string) {
+    return "";
+  }
+
   // don't escape SafeStrings, since they're already safe
   if (string instanceof Handlebars.SafeString) {
     return string.toString();
@@ -54,18 +60,15 @@ export function getRawSize(size) {
   return size * Math.min(3, Math.max(1, Math.round(pixelRatio)));
 }
 
-const getURLWithCDN = url => Discourse.getURLWithCDN(url);
-
-export function avatarImg(options, getURL) {
-  getURL = getURL || getURLWithCDN;
-
+export function avatarImg(options, customGetURL) {
   const size = translateSize(options.size);
-  const url = avatarUrl(options.avatarTemplate, size);
+  let path = avatarUrl(options.avatarTemplate, size);
 
   // We won't render an invalid url
-  if (!url || url.length === 0) {
+  if (!path || path.length === 0) {
     return "";
   }
+  path = (customGetURL || getURLWithCDN)(path);
 
   const classes =
     "avatar" + (options.extraClasses ? " " + options.extraClasses : "");
@@ -76,19 +79,7 @@ export function avatarImg(options, getURL) {
     title = ` title='${escaped}' aria-label='${escaped}'`;
   }
 
-  return (
-    "<img alt='' width='" +
-    size +
-    "' height='" +
-    size +
-    "' src='" +
-    getURL(url) +
-    "' class='" +
-    classes +
-    "'" +
-    title +
-    ">"
-  );
+  return `<img alt='' width='${size}' height='${size}' src='${path}' class='${classes}'${title}>`;
 }
 
 export function tinyAvatar(avatarTemplate, options) {
@@ -98,7 +89,7 @@ export function tinyAvatar(avatarTemplate, options) {
 }
 
 export function postUrl(slug, topicId, postNumber) {
-  var url = Discourse.getURL("/t/");
+  var url = getURL("/t/");
   if (slug) {
     url += slug + "/";
   } else {
@@ -143,7 +134,21 @@ export function selectedText() {
       range.setEndBefore($postMenuArea);
     }
 
-    $div.append(range.cloneContents());
+    const $codeBlockTest = $ancestor.parents("pre");
+    if ($codeBlockTest.length) {
+      const $code = $("<code>");
+      $code.append(range.cloneContents());
+      // Even though this was a code block, produce a non-block quote if it's a single line.
+      if (/\n/.test($code.text())) {
+        const $pre = $("<pre>");
+        $pre.append($code);
+        $div.append($pre);
+      } else {
+        $div.append($code);
+      }
+    } else {
+      $div.append(range.cloneContents());
+    }
   }
 
   return toMarkdown($div.html());
@@ -338,7 +343,7 @@ export function toAsciiPrintable(string, fallback) {
     string = string.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
 
-  return /^[/\040-\176/]*$/.test(string) ? string : fallback;
+  return /^[\040-\176]*$/.test(string) ? string : fallback;
 }
 
 export function slugify(string) {
@@ -415,7 +420,7 @@ function reportToLogster(name, error) {
     stacktrace: error.stack
   };
 
-  Ember.$.ajax(`${Discourse.BaseUri}/logs/report_js_error`, {
+  Ember.$.ajax(getURL("/logs/report_js_error"), {
     data,
     type: "POST",
     cache: false
@@ -432,7 +437,7 @@ export function rescueThemeError(name, error, api) {
     return;
   }
 
-  const path = `${Discourse.BaseUri}/admin/customize/themes`;
+  const path = getURL(`/admin/customize/themes`);
   const message = I18n.t("themes.broken_theme_alert", {
     theme: name,
     path: `<a href="${path}">${path}</a>`

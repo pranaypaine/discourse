@@ -1,3 +1,4 @@
+import getURL from "discourse-common/lib/get-url";
 import discourseComputed from "discourse-common/utils/decorators";
 import { get } from "@ember/object";
 import { ajax } from "discourse/lib/ajax";
@@ -5,7 +6,6 @@ import RestModel from "discourse/models/rest";
 import { on } from "discourse-common/utils/decorators";
 import PermissionType from "discourse/models/permission-type";
 import { NotificationLevels } from "discourse/lib/notification-levels";
-import deprecated from "discourse-common/lib/deprecated";
 import Site from "discourse/models/site";
 import User from "discourse/models/user";
 
@@ -97,7 +97,7 @@ const Category = RestModel.extend({
 
   @discourseComputed("name")
   url() {
-    return Discourse.getURL(`/c/${Category.slugFor(this)}/${this.id}`);
+    return getURL(`/c/${Category.slugFor(this)}/${this.id}`);
   },
 
   @discourseComputed
@@ -188,7 +188,8 @@ const Category = RestModel.extend({
         ),
         search_priority: this.search_priority,
         reviewable_by_group_name: this.reviewable_by_group_name,
-        read_only_banner: this.read_only_banner
+        read_only_banner: this.read_only_banner,
+        default_list_filter: this.default_list_filter
       },
       type: id ? "PUT" : "POST"
     });
@@ -510,16 +511,6 @@ Category.reopenClass({
     return _.sortBy(data, category => {
       return category.get("read_restricted");
     });
-  }
-});
-
-Object.defineProperty(Discourse, "Category", {
-  get() {
-    deprecated(
-      "Import the Category class instead of using Discourse.Category",
-      { since: "2.4.0", dropFrom: "2.5.0" }
-    );
-    return Category;
   }
 });
 

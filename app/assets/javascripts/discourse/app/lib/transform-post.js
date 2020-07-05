@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import { isEmpty } from "@ember/utils";
 import { userPath } from "discourse/lib/url";
 
@@ -46,6 +47,7 @@ export function transformBasicPost(post) {
     new_user: post.trust_level === 0,
     name: post.name,
     user_title: post.user_title,
+    title_is_group: post.title_is_group,
     created_at: post.created_at,
     updated_at: post.updated_at,
     canDelete: post.can_delete,

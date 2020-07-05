@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import discourseComputed from "discourse-common/utils/decorators";
 import { cancel, later } from "@ember/runloop";
 import Component from "@ember/component";
@@ -7,7 +8,7 @@ import {
   REMINDER_TYPE,
   DELETE_REPLIES_TYPE
 } from "discourse/controllers/edit-topic-timer";
-import ENV from "discourse-common/config/environment";
+import { isTesting } from "discourse-common/config/environment";
 
 export default Component.extend({
   classNames: ["topic-status-info"],
@@ -91,7 +92,7 @@ export default Component.extend({
       });
 
       // TODO Sam: concerned this can cause a heavy rerender loop
-      if (ENV.environment !== "test") {
+      if (!isTesting()) {
         this._delayedRerender = later(() => {
           this.renderTopicTimer();
         }, rerenderDelay);

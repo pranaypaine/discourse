@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import discourseComputed from "discourse-common/utils/decorators";
 import { computed, get } from "@ember/object";
 import Component from "@ember/component";
@@ -24,7 +26,7 @@ export default Component.extend({
     }
 
     const opts = {
-      latestLink: `<a href="${Discourse.getURL("/latest")}">${I18n.t(
+      latestLink: `<a href="${getURL("/latest")}">${I18n.t(
         "topic.view_latest_topics"
       )}</a>`
     };
@@ -42,7 +44,7 @@ export default Component.extend({
     } else {
       opts.catLink =
         '<a href="' +
-        Discourse.getURL("/categories") +
+        getURL("/categories") +
         '">' +
         I18n.t("topic.browse_all_categories") +
         "</a>";

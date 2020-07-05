@@ -36,6 +36,7 @@
                 options=(hash
                   filterable=true
                   categoryId=buffered.category_id
+                  minimum=minimumRequiredTags
                 )
               }}
             {{/if}}
@@ -89,6 +90,9 @@
       {{#if model.publishedPage}}
         <div class="published-page-notice">
           <div class="details">
+            {{#if model.publishedPage.public}}
+              <span class="is-public">{{i18n "topic.publish_page.public"}}</span>
+            {{/if}}
             {{i18n "topic.publish_page.topic_published"}}
             <div>
               <a href={{model.publishedPage.url}} target="_blank" rel="noopener noreferrer">{{model.publishedPage.url}}</a>
@@ -126,24 +130,6 @@
 
       {{#topic-navigation topic=model jumpToDate=(action "jumpToDate") jumpToIndex=(action "jumpToIndex") as |info|}}
         {{#if info.renderTimeline}}
-          {{#if info.renderAdminMenuButton}}
-            {{topic-admin-menu-button
-              topic=model
-              fixed="true"
-              toggleMultiSelect=(action "toggleMultiSelect")
-              deleteTopic=(action "deleteTopic")
-              recoverTopic=(action "recoverTopic")
-              toggleClosed=(action "toggleClosed")
-              toggleArchived=(action "toggleArchived")
-              toggleVisibility=(action "toggleVisibility")
-              showTopicStatusUpdate=(route-action "showTopicStatusUpdate")
-              showFeatureTopic=(route-action "showFeatureTopic")
-              showChangeTimestamp=(route-action "showChangeTimestamp")
-              resetBumpDate=(action "resetBumpDate")
-              convertToPublicTopic=(action "convertToPublicTopic")
-              convertToPrivateMessage=(action "convertToPrivateMessage")}}
-          {{/if}}
-
           {{topic-timeline
             topic=model
             notificationLevel=model.details.notification_level
@@ -177,24 +163,22 @@
             expanded=info.topicProgressExpanded
             jumpToPost=(action "jumpToPost")}}
             {{plugin-outlet name="before-topic-progress" args=(hash model=model jumpToPost=(action "jumpToPost"))}}
-            {{#if info.renderAdminMenuButton}}
-              {{topic-admin-menu-button
-                topic=model
-                openUpwards="true"
-                rightSide="true"
-                toggleMultiSelect=(action "toggleMultiSelect")
-                deleteTopic=(action "deleteTopic")
-                recoverTopic=(action "recoverTopic")
-                toggleClosed=(action "toggleClosed")
-                toggleArchived=(action "toggleArchived")
-                toggleVisibility=(action "toggleVisibility")
-                showTopicStatusUpdate=(route-action "showTopicStatusUpdate")
-                showFeatureTopic=(route-action "showFeatureTopic")
-                showChangeTimestamp=(route-action "showChangeTimestamp")
-                resetBumpDate=(action "resetBumpDate")
-                convertToPublicTopic=(action "convertToPublicTopic")
-                convertToPrivateMessage=(action "convertToPrivateMessage")}}
-            {{/if}}
+            {{topic-admin-menu-button
+              topic=model
+              openUpwards="true"
+              rightSide="true"
+              toggleMultiSelect=(action "toggleMultiSelect")
+              deleteTopic=(action "deleteTopic")
+              recoverTopic=(action "recoverTopic")
+              toggleClosed=(action "toggleClosed")
+              toggleArchived=(action "toggleArchived")
+              toggleVisibility=(action "toggleVisibility")
+              showTopicStatusUpdate=(route-action "showTopicStatusUpdate")
+              showFeatureTopic=(route-action "showFeatureTopic")
+              showChangeTimestamp=(route-action "showChangeTimestamp")
+              resetBumpDate=(action "resetBumpDate")
+              convertToPublicTopic=(action "convertToPublicTopic")
+              convertToPrivateMessage=(action "convertToPrivateMessage")}}
           {{/topic-progress}}
         {{/if}}
       {{/topic-navigation}}

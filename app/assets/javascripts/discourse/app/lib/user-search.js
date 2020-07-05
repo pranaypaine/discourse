@@ -3,6 +3,8 @@ import { CANCELLED_STATUS } from "discourse/lib/autocomplete";
 import { userPath } from "discourse/lib/url";
 import { emailValid } from "discourse/lib/utilities";
 import { Promise } from "rsvp";
+import { later, cancel } from "@ember/runloop";
+import { isTesting } from "discourse-common/config/environment";
 
 var cache = {},
   cacheKey,
@@ -180,9 +182,12 @@ export default function userSearch(options) {
 
     cacheKey = newCacheKey;
 
-    var clearPromise = setTimeout(function() {
-      resolve(CANCELLED_STATUS);
-    }, 5000);
+    const clearPromise = later(
+      () => {
+        resolve(CANCELLED_STATUS);
+      },
+      isTesting() ? 250 : 5000
+    );
 
     if (skipSearch(term, options.allowEmails)) {
       resolve([]);
@@ -199,7 +204,7 @@ export default function userSearch(options) {
       allowedUsers,
       groupMembersOf,
       function(r) {
-        clearTimeout(clearPromise);
+        cancel(clearPromise);
         resolve(organizeResults(r, options));
       }
     );

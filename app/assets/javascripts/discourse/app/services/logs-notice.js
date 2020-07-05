@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import { isEmpty } from "@ember/utils";
 import EmberObject from "@ember/object";
 import discourseComputed, {
@@ -41,7 +43,7 @@ const LogsNotice = EmberObject.extend({
           ),
           rate,
           limit: siteSettingLimit,
-          url: Discourse.getURL("/logs")
+          url: getURL("/logs")
         })
       );
     });

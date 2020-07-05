@@ -29,9 +29,6 @@
 }
 
 .modal-open {
-  .dropdown-menu {
-    z-index: z("modal", "dropdown");
-  }
   .popover {
     z-index: z("modal", "popover");
   }
@@ -140,6 +137,14 @@
   height: 100%;
   z-index: z("modal", "content");
   overflow: auto;
+
+  html.keyboard-visible body.ios-safari-composer-hacks & {
+    height: calc(var(--composer-vh, 1vh) * 100);
+    .modal-inner-container {
+      max-height: 100%;
+      margin-bottom: 0px;
+    }
+  }
 
   &:not(.history-modal) {
     .modal-body:not(.reorder-categories):not(.poll-ui-builder) {
@@ -684,24 +689,51 @@
   }
 }
 
-.publish-page-modal .modal-body {
-  p.publish-description {
-    margin-top: 0;
-  }
-  input.publish-slug {
-    width: 100%;
-  }
+.publish-page-modal {
+  .modal-body {
+    p.publish-description {
+      margin-top: 0;
+    }
+    input.publish-slug {
+      width: 100%;
+    }
 
-  .publish-url {
-    margin-bottom: 1em;
-    .example-url,
-    .invalid-slug {
-      font-weight: bold;
+    .publish-url {
+      margin-bottom: 1em;
+      .example-url,
+      .invalid-slug {
+        font-weight: bold;
+      }
+    }
+
+    .publish-slug:disabled {
+      cursor: not-allowed;
+    }
+
+    .controls {
+      margin-bottom: 1em;
+
+      .description {
+        margin: 0;
+        display: flex;
+        align-items: center;
+      }
     }
   }
 
-  .publish-slug:disabled {
-    cursor: not-allowed;
+  .modal-footer {
+    display: flex;
+
+    .close-publish-page {
+      margin-left: auto;
+      margin-right: 0;
+    }
+  }
+}
+
+.ignore-duration-with-username-modal {
+  .future-date-input {
+    margin-top: 1em;
   }
 }
 

@@ -18,6 +18,7 @@ class Plugin::CustomEmoji
   def self.clear_cache
     @@cache_key = CACHE_KEY
     @@emojis = {}
+    @@translations = {}
   end
 
   def self.register(name, url, group = Emoji::DEFAULT_GROUP)
@@ -75,6 +76,10 @@ class Plugin::Instance
 
   def seed_data
     @seed_data ||= HashWithIndifferentAccess.new({})
+  end
+
+  def seed_fu_filter(filter = nil)
+    @seed_fu_filter = filter
   end
 
   def self.find_all(parent_path)
@@ -143,39 +148,46 @@ class Plugin::Instance
   end
 
   # Applies to all sites in a multisite environment. Ignores plugin.enabled?
-  def replace_flags(settings: ::FlagSettings.new)
+  def replace_flags(settings: ::FlagSettings.new, score_type_names: [])
     next_flag_id = ReviewableScore.types.values.max + 1
 
-    yield(settings, next_flag_id)
+    yield(settings, next_flag_id) if block_given?
 
     reloadable_patch do |plugin|
       ::PostActionType.replace_flag_settings(settings)
       ::ReviewableScore.reload_types
+      ::ReviewableScore.add_new_types(score_type_names)
     end
   end
 
   def whitelist_staff_user_custom_field(field)
-    reloadable_patch do |plugin|
-      ::User.register_plugin_staff_custom_field(field, plugin) # plugin.enabled? is checked at runtime
-    end
+    DiscoursePluginRegistry.register_staff_user_custom_field(field, self)
   end
 
   def whitelist_public_user_custom_field(field)
-    reloadable_patch do |plugin|
-      ::User.register_plugin_public_custom_field(field, plugin) # plugin.enabled? is checked at runtime
-    end
+    DiscoursePluginRegistry.register_public_user_custom_field(field, self)
   end
 
   def register_editable_user_custom_field(field, staff_only: false)
-    reloadable_patch do |plugin|
-      ::User.register_plugin_editable_user_custom_field(field, plugin, staff_only: staff_only) # plugin.enabled? is checked at runtime
+    if staff_only
+      DiscoursePluginRegistry.register_staff_editable_user_custom_field(field, self)
+    else
+      DiscoursePluginRegistry.register_self_editable_user_custom_field(field, self)
     end
   end
 
   def register_editable_group_custom_field(field)
-    reloadable_patch do |plugin|
-      ::Group.register_plugin_editable_group_custom_field(field, plugin) # plugin.enabled? is checked at runtime
+    DiscoursePluginRegistry.register_editable_group_custom_field(field, self)
+  end
+
+  # Request a new size for topic thumbnails
+  # Will respect plugin enabled setting is enabled
+  # Size should be an array with two elements [max_width, max_height]
+  def register_topic_thumbnail_size(size)
+    if !(size.kind_of?(Array) && size.length == 2)
+      raise ArgumentError.new("Topic thumbnail dimension is not valid")
     end
+    DiscoursePluginRegistry.register_topic_thumbnail_size(size, self)
   end
 
   def custom_avatar_column(column)
@@ -408,6 +420,10 @@ class Plugin::Instance
     SeedFu.fixture_paths.concat(paths)
   end
 
+  def register_seedfu_filter(filter = nil)
+    DiscoursePluginRegistry.register_seedfu_filter(filter)
+  end
+
   def listen_for(event_name)
     return unless self.respond_to?(event_name)
     DiscourseEvent.on(event_name, &self.method(event_name))
@@ -446,7 +462,6 @@ class Plugin::Instance
   end
 
   def register_custom_html(hash)
-    DiscoursePluginRegistry.custom_html ||= {}
     DiscoursePluginRegistry.custom_html.merge!(hash)
   end
 
@@ -533,6 +548,10 @@ class Plugin::Instance
 
       if transpile_js
         DiscourseJsProcessor.plugin_transpile_paths << root_path.sub(Rails.root.to_s, '').sub(/^\/*/, '')
+        DiscourseJsProcessor.plugin_transpile_paths << admin_path.sub(Rails.root.to_s, '').sub(/^\/*/, '')
+
+        test_path = "#{root_dir_name}/test/javascripts"
+        DiscourseJsProcessor.plugin_transpile_paths << test_path.sub(Rails.root.to_s, '').sub(/^\/*/, '')
       end
     end
 
@@ -638,11 +657,7 @@ class Plugin::Instance
   end
 
   def enabled_site_setting_filter(filter = nil)
-    if filter
-      @enabled_setting_filter = filter
-    else
-      @enabled_setting_filter
-    end
+    STDERR.puts("`enabled_site_setting_filter` is deprecated")
   end
 
   def enabled_site_setting(setting = nil)
@@ -674,8 +689,9 @@ class Plugin::Instance
     if @path
       # Automatically include all ES6 JS and hbs files
       root_path = "#{File.dirname(@path)}/assets/javascripts"
+      admin_path = "#{File.dirname(@path)}/admin/assets/javascripts"
 
-      Dir.glob("#{root_path}/**/*") do |f|
+      Dir.glob(["#{root_path}/**/*", "#{admin_path}/**/*"]) do |f|
         f_str = f.to_s
         if File.directory?(f)
           yield [f, true]

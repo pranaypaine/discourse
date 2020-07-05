@@ -34,6 +34,8 @@ class UserCardSerializer < BasicUserSerializer
   end
 
   attributes :email,
+             :secondary_emails,
+             :unconfirmed_emails,
              :last_posted_at,
              :last_seen_at,
              :created_at,
@@ -77,6 +79,9 @@ class UserCardSerializer < BasicUserSerializer
     (object.id && object.id == scope.user.try(:id)) ||
       (scope.is_staff? && object.staged?)
   end
+
+  alias_method :include_secondary_emails?, :include_email?
+  alias_method :include_unconfirmed_emails?, :include_email?
 
   def bio_excerpt
     object.user_profile.bio_excerpt(350, keep_newlines: true, keep_emoji_images: true)

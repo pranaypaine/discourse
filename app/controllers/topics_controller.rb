@@ -87,11 +87,7 @@ class TopicsController < ApplicationController
 
       raise ex
     rescue Discourse::NotLoggedIn => ex
-      if !SiteSetting.detailed_404
-        raise Discourse::NotFound
-      else
-        raise ex
-      end
+      raise(SiteSetting.detailed_404 ? ex : Discourse::NotFound)
     rescue Discourse::InvalidAccess => ex
       # If the user can't see the topic, clean up notifications for it.
       Notification.remove_for(current_user.id, params[:topic_id]) if current_user
@@ -445,7 +441,7 @@ class TopicsController < ApplicationController
         invalid_param(:status_type)
       end
     based_on_last_post = params[:based_on_last_post]
-    params.require(:duration) if based_on_last_post || TopicTimer.types[:delete_replies] == status_type
+    params.require(:duration) if based_on_last_post
 
     topic = Topic.find_by(id: params[:topic_id])
     guardian.ensure_can_moderate!(topic)
@@ -945,6 +941,12 @@ class TopicsController < ApplicationController
   end
 
   def redirect_to_correct_topic(topic, post_number = nil)
+    begin
+      guardian.ensure_can_see!(topic)
+    rescue Discourse::InvalidAccess => ex
+      raise(SiteSetting.detailed_404 ? ex : Discourse::NotFound)
+    end
+
     url = topic.relative_url
     url << "/#{post_number}" if post_number.to_i > 0
     url << ".json" if request.format.json?
@@ -1012,6 +1014,8 @@ class TopicsController < ApplicationController
 
     respond_to do |format|
       format.html do
+        @tags = SiteSetting.tagging_enabled ? @topic_view.topic.tags : []
+        @breadcrumbs = helpers.categories_breadcrumb(@topic_view.topic) || []
         @description_meta = @topic_view.topic.excerpt.present? ? @topic_view.topic.excerpt : @topic_view.summary
         store_preloaded("topic_#{@topic_view.topic.id}", MultiJson.dump(topic_view_serializer))
         render :show

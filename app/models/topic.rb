@@ -10,8 +10,10 @@ class Topic < ActiveRecord::Base
   include LimitedEdit
   extend Forwardable
 
-  # remove line Jan 2021
-  self.ignored_columns = ["avg_time"]
+  self.ignored_columns = [
+    "avg_time", # TODO(2021-01-04): remove
+    "image_url" # TODO(2021-06-01): remove
+  ]
 
   def_delegator :featured_users, :user_ids, :featured_user_ids
   def_delegator :featured_users, :choose, :feature_topic_users
@@ -33,16 +35,16 @@ class Topic < ActiveRecord::Base
   end
 
   def self.thumbnail_sizes
-    [ self.share_thumbnail_size ]
+    [ self.share_thumbnail_size ] + DiscoursePluginRegistry.topic_thumbnail_sizes
   end
 
-  def thumbnail_job_redis_key(extra_sizes)
-    "generate_topic_thumbnail_enqueue_#{id}_#{extra_sizes.inspect}"
+  def thumbnail_job_redis_key(sizes)
+    "generate_topic_thumbnail_enqueue_#{id}_#{sizes.inspect}"
   end
 
   def filtered_topic_thumbnails(extra_sizes: [])
     return nil unless original = image_upload
-    return nil unless original.width && original.height
+    return nil unless original.read_attribute(:width) && original.read_attribute(:height)
 
     thumbnail_sizes = Topic.thumbnail_sizes + extra_sizes
     topic_thumbnails.filter { |record| thumbnail_sizes.include?([record.max_width, record.max_height]) }
@@ -50,7 +52,7 @@ class Topic < ActiveRecord::Base
 
   def thumbnail_info(enqueue_if_missing: false, extra_sizes: [])
     return nil unless original = image_upload
-    return nil unless original.width && original.height
+    return nil unless original.read_attribute(:width) && original.read_attribute(:height)
 
     infos = []
     infos << { # Always add original
@@ -79,10 +81,12 @@ class Topic < ActiveRecord::Base
     if SiteSetting.create_thumbnails &&
        enqueue_if_missing &&
        records.length < thumbnail_sizes.length &&
-       Discourse.redis.set(thumbnail_job_redis_key(extra_sizes), 1, nx: true, ex: 1.minute)
+       Discourse.redis.set(thumbnail_job_redis_key(thumbnail_sizes), 1, nx: true, ex: 1.minute)
 
       Jobs.enqueue(:generate_topic_thumbnails, { topic_id: id, extra_sizes: extra_sizes })
     end
+
+    infos.each { |i| i[:url] = UrlHelper.cook_url(i[:url], secure: original.secure?) }
 
     infos.sort_by! { |i| -i[:width] * i[:height] }
   end
@@ -102,7 +106,9 @@ class Topic < ActiveRecord::Base
       record.max_width == Topic.share_thumbnail_size[0] &&
         record.max_height == Topic.share_thumbnail_size[1]
     end
-    thumbnail&.optimized_image&.url || image_upload&.url
+
+    raw_url = thumbnail&.optimized_image&.url || image_upload&.url
+    UrlHelper.cook_url(raw_url, secure: image_upload&.secure?)
   end
 
   def featured_users
@@ -149,7 +155,12 @@ class Topic < ActiveRecord::Base
                                     message: :has_already_been_used,
                                     allow_blank: true,
                                     case_sensitive: false,
-                                    collection: Proc.new { Topic.listable_topics } }
+                                    collection: Proc.new { |t|
+                                      SiteSetting.allow_duplicate_topic_titles_category? ?
+                                        Topic.listable_topics.where("category_id = ?", t.category_id) :
+                                        Topic.listable_topics
+                                    }
+                                  }
 
   validates :category_id,
             presence: true,
@@ -213,7 +224,7 @@ class Topic < ActiveRecord::Base
 
   has_one :user_warning
   has_one :first_post, -> { where post_number: 1 }, class_name: 'Post'
-  has_one :topic_search_data
+  has_one :topic_search_data, dependent: :delete
   has_one :topic_embed, dependent: :destroy
 
   belongs_to :image_upload, class_name: 'Upload'
@@ -1472,6 +1483,13 @@ class Topic < ActiveRecord::Base
     private_topic
   end
 
+  def update_excerpt(excerpt)
+    update_column(:excerpt, excerpt)
+    if archetype == "banner"
+      ApplicationController.banner_json_cache.clear
+    end
+  end
+
   def pm_with_non_human_user?
     sql = <<~SQL
     SELECT 1 FROM topics
@@ -1652,7 +1670,6 @@ end
 #  featured_user3_id         :integer
 #  deleted_at                :datetime
 #  highest_post_number       :integer          default(0), not null
-#  image_url                 :string
 #  like_count                :integer          default(0), not null
 #  incoming_link_count       :integer          default(0), not null
 #  category_id               :integer

@@ -58,7 +58,6 @@ class ImportScripts::Base
       update_post_timings
       update_feature_topic_users
       update_category_featured_topics
-      update_topic_count_replies
       reset_topic_counters
     end
 
@@ -78,6 +77,7 @@ class ImportScripts::Base
       min_personal_message_post_length: 1,
       min_personal_message_title_length: 1,
       allow_duplicate_topic_titles: true,
+      allow_duplicate_topic_titles_category: false,
       disable_emails: 'yes',
       max_attachment_size_kb: 102400,
       max_image_size_kb: 102400,
@@ -685,24 +685,11 @@ class ImportScripts::Base
       FROM users u1
       JOIN lpa ON lpa.user_id = u1.id
       WHERE u1.id = users.id
-        AND users.last_posted_at <> lpa.last_posted_at
+        AND users.last_posted_at IS DISTINCT FROM lpa.last_posted_at
     SQL
   end
 
   def update_user_stats
-    puts "", "Updating topic reply counts..."
-
-    count = 0
-    total = User.real.count
-
-    User.real.find_each do |u|
-      u.create_user_stat if u.user_stat.nil?
-      us = u.user_stat
-      us.update_topic_reply_count
-      us.save
-      print_status(count += 1, total, get_start_time("user_stats"))
-    end
-
     puts "", "Updating first_post_created_at..."
 
     DB.exec <<~SQL
@@ -716,7 +703,7 @@ class ImportScripts::Base
       FROM user_stats u1
       JOIN sub ON sub.user_id = u1.user_id
       WHERE u1.user_id = user_stats.user_id
-        AND user_stats.first_post_created_at <> sub.first_post_created_at
+        AND user_stats.first_post_created_at IS DISTINCT FROM sub.first_post_created_at
     SQL
 
     puts "", "Updating user post_count..."
@@ -804,19 +791,6 @@ class ImportScripts::Base
     Category.find_each do |category|
       CategoryFeaturedTopic.feature_topics_for(category)
       print_status(count += 1, total, get_start_time("category_featured_topics"))
-    end
-  end
-
-  def update_topic_count_replies
-    puts "", "Updating user topic reply counts"
-
-    count = 0
-    total = User.real.count
-
-    User.real.find_each do |u|
-      u.user_stat.update_topic_reply_count
-      u.user_stat.save!
-      print_status(count += 1, total, get_start_time("topic_count_replies"))
     end
   end
 

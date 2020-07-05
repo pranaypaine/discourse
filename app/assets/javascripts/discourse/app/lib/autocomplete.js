@@ -9,6 +9,7 @@ import Site from "discourse/models/site";
   @module $.fn.autocomplete
 **/
 
+export const SKIP = "skip";
 export const CANCELLED_STATUS = "__CANCELLED";
 const allowedLettersRegex = /[\s\t\[\{\(\/]/;
 
@@ -274,6 +275,9 @@ export default function(options) {
     ul.find("li").click(function() {
       selectedOption = ul.find("li").index(this);
       completeTerm(autocompleteOptions[selectedOption]);
+      if (!options.single) {
+        me.focus();
+      }
       return false;
     });
     var pos = null;
@@ -348,8 +352,6 @@ export default function(options) {
       left: left + "px"
     });
   }
-
-  const SKIP = "skip";
 
   function dataSource(term, opts) {
     if (prevTerm === term) {
@@ -492,7 +494,6 @@ export default function(options) {
             (!prev || allowedLettersRegex.test(prev))
           ) {
             completeStart = c;
-            cp = completeEnd = initial;
             term = me[0].value.substring(c + 1, initial);
             updateAutoComplete(dataSource(term, options));
             return true;

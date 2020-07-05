@@ -1,9 +1,12 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import { later } from "@ember/runloop";
 import { createWidget, applyDecorators } from "discourse/widgets/widget";
 import { h } from "virtual-dom";
 import DiscourseURL from "discourse/lib/url";
 import { ajax } from "discourse/lib/ajax";
 import { userPath } from "discourse/lib/url";
+import { wantsNewWindow } from "discourse/lib/intercept-click";
 import { NotificationLevels } from "discourse/lib/notification-levels";
 
 const flatten = array => [].concat.apply([], array);
@@ -24,14 +27,24 @@ createWidget("priority-faq-link", {
   },
 
   click(e) {
-    e.preventDefault();
     if (this.siteSettings.faq_url === this.attrs.href) {
       ajax(userPath("read-faq"), { type: "POST" }).then(() => {
         this.currentUser.set("read_faq", true);
-        DiscourseURL.routeToTag($(e.target).closest("a")[0]);
+
+        if (wantsNewWindow(e)) {
+          return;
+        }
+
+        e.preventDefault();
+        DiscourseURL.routeTo(this.attrs.href);
       });
     } else {
-      DiscourseURL.routeToTag($(e.target).closest("a")[0]);
+      if (wantsNewWindow(e)) {
+        return;
+      }
+
+      e.preventDefault();
+      DiscourseURL.routeTo(this.attrs.href);
     }
   }
 });
@@ -265,12 +278,7 @@ export default createWidget("hamburger-menu", {
   panelContents() {
     const { currentUser } = this;
     const results = [];
-
-    let faqUrl = this.siteSettings.faq_url;
-    if (!faqUrl || faqUrl.length === 0) {
-      faqUrl = Discourse.getURL("/faq");
-    }
-
+    const faqUrl = this.siteSettings.faq_url || getURL("/faq");
     const prioritizeFaq =
       this.settings.showFAQ && this.currentUser && !this.currentUser.read_faq;
 

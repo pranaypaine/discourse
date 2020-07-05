@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import { warn } from "@ember/debug";
 import discourseComputed from "discourse-common/utils/decorators";
 import { alias, oneWay } from "@ember/object/computed";
@@ -24,7 +25,8 @@ const CUSTOM_TYPES = [
   "upload",
   "group_list",
   "tag_list",
-  "color"
+  "color",
+  "simple_list"
 ];
 
 const AUTO_REFRESH_ON_SAVE = ["logo", "logo_small", "large_icon"];

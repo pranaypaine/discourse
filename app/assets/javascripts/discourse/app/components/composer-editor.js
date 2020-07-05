@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import { debounce, later, next, schedule, throttle } from "@ember/runloop";
 import Component from "@ember/component";
 import userSearch from "discourse/lib/user-search";
@@ -43,11 +45,7 @@ import {
   cacheShortUploadUrl,
   resolveAllShortUrls
 } from "pretty-text/upload-short-url";
-import {
-  INLINE_ONEBOX_LOADING_CSS_CLASS,
-  INLINE_ONEBOX_CSS_CLASS
-} from "pretty-text/context/inline-onebox-css-classes";
-import ENV from "discourse-common/config/environment";
+import { isTesting } from "discourse-common/config/environment";
 
 const REBUILD_SCROLL_MAP_EVENTS = ["composer:resized", "composer:typed-reply"];
 
@@ -653,9 +651,7 @@ export default Component.extend({
     const $element = $(this.element);
 
     $element.fileupload({
-      url: Discourse.getURL(
-        `/uploads.json?client_id=${this.messageBus.clientId}`
-      ),
+      url: getURL(`/uploads.json?client_id=${this.messageBus.clientId}`),
       dataType: "json",
       pasteZone: $element
     });
@@ -850,7 +846,7 @@ export default Component.extend({
       // need to wait a bit for the "slide down" transition of the composer
       later(
         () => this.appEvents.trigger("composer:closed"),
-        ENV.environment === "test" ? 0 : 400
+        isTesting() ? 0 : 400
       );
     });
 
@@ -968,32 +964,29 @@ export default Component.extend({
           // Inline Oneboxes = `a.inline-onebox-loading` -> `a.inline-onebox`
 
           let loadedOneboxes = $preview.find(
-            `aside.onebox, a.${LOADING_ONEBOX_CSS_CLASS}, a.${INLINE_ONEBOX_CSS_CLASS}`
+            `aside.onebox, a.${LOADING_ONEBOX_CSS_CLASS}, a.inline-onebox`
           ).length;
 
-          $preview
-            .find(`a.onebox, a.${INLINE_ONEBOX_LOADING_CSS_CLASS}`)
-            .each((_, link) => {
-              const $link = $(link);
-              const text = $link.text();
-              const isInline =
-                $link.attr("class") === INLINE_ONEBOX_LOADING_CSS_CLASS;
-              const m = isInline ? inlineOneboxes : oneboxes;
+          $preview.find(`a.onebox, a.inline-onebox-loading`).each((_, link) => {
+            const $link = $(link);
+            const text = $link.text();
+            const isInline = $link.attr("class") === "inline-onebox-loading";
+            const m = isInline ? inlineOneboxes : oneboxes;
 
-              if (loadedOneboxes < this.siteSettings.max_oneboxes_per_post) {
-                if (m[text] === undefined) {
-                  m[text] = [];
-                  loadedOneboxes++;
-                }
-                m[text].push(link);
-              } else {
-                if (m[text] !== undefined) {
-                  m[text].push(link);
-                } else if (isInline) {
-                  $link.removeClass(INLINE_ONEBOX_LOADING_CSS_CLASS);
-                }
+            if (loadedOneboxes < this.siteSettings.max_oneboxes_per_post) {
+              if (m[text] === undefined) {
+                m[text] = [];
+                loadedOneboxes++;
               }
-            });
+              m[text].push(link);
+            } else {
+              if (m[text] !== undefined) {
+                m[text].push(link);
+              } else if (isInline) {
+                $link.removeClass("inline-onebox-loading");
+              }
+            }
+          });
 
           if (Object.keys(oneboxes).length > 0) {
             this._loadOneboxes(oneboxes);
@@ -1007,7 +1000,7 @@ export default Component.extend({
       );
 
       // Short upload urls need resolution
-      resolveAllShortUrls(ajax, this.siteSettings, ".d-editor-preview-wrapper");
+      resolveAllShortUrls(ajax, this.siteSettings, $preview[0]);
 
       if (this._enableAdvancedEditorPreviewSync()) {
         this._syncScroll(

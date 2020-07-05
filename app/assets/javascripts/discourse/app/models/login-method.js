@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import discourseComputed from "discourse-common/utils/decorators";
 import EmberObject from "@ember/object";
 import { updateCsrfToken } from "discourse/lib/ajax";
@@ -32,7 +34,7 @@ const LoginMethod = EmberObject.extend({
       return Promise.resolve();
     }
 
-    let authUrl = Discourse.getURL(`/auth/${this.name}`);
+    let authUrl = getURL(`/auth/${this.name}`);
 
     if (reconnect) {
       params["reconnect"] = true;

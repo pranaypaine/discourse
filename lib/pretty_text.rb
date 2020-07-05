@@ -65,7 +65,7 @@ module PrettyText
   end
 
   def self.create_es6_context
-    ctx = MiniRacer::Context.new(timeout: 25000)
+    ctx = MiniRacer::Context.new(timeout: 25000, ensure_gc_after_idle: 2000)
 
     ctx.eval("window = {}; window.devicePixelRatio = 2;") # hack to make code think stuff is retina
 
@@ -75,6 +75,10 @@ module PrettyText
     end
     ctx.eval("__PRETTY_TEXT = true")
 
+    PrettyText::Helpers.instance_methods.each do |method|
+      ctx.attach("__helpers.#{method}", PrettyText::Helpers.method(method))
+    end
+
     ctx_load(ctx, "#{Rails.root}/app/assets/javascripts/discourse-loader.js")
     ctx_load(ctx, "#{Rails.root}/app/assets/javascripts/handlebars-shim.js")
     ctx_load(ctx, "vendor/assets/javascripts/lodash.js")
@@ -82,12 +86,10 @@ module PrettyText
     ctx_load_manifest(ctx, "markdown-it-bundle.js")
     root_path = "#{Rails.root}/app/assets/javascripts/"
 
+    apply_es6_file(ctx, root_path, "discourse-common/addon/lib/get-url")
     apply_es6_file(ctx, root_path, "discourse/app/lib/to-markdown")
     apply_es6_file(ctx, root_path, "discourse/app/lib/utilities")
 
-    PrettyText::Helpers.instance_methods.each do |method|
-      ctx.attach("__helpers.#{method}", PrettyText::Helpers.method(method))
-    end
     ctx.load("#{Rails.root}/lib/pretty_text/shims.js")
     ctx.eval("__setUnicode(#{Emoji.unicode_replacements_json})")
 
@@ -125,6 +127,10 @@ module PrettyText
     @ctx
   end
 
+  def self.reset_translations
+    v8.eval("__resetTranslationTree()")
+  end
+
   def self.reset_context
     @ctx_init.synchronize do
       @ctx&.dispose
@@ -158,6 +164,7 @@ module PrettyText
         __optInput.getTopicInfo = __getTopicInfo;
         __optInput.categoryHashtagLookup = __categoryLookup;
         __optInput.customEmoji = #{custom_emoji.to_json};
+        __optInput.customEmojiTranslation = #{Plugin::CustomEmoji.translations.to_json};
         __optInput.emojiUnicodeReplacer = __emojiUnicodeReplacer;
         __optInput.lookupUploadUrls = __lookupUploadUrls;
         __optInput.censoredRegexp = #{WordWatcher.word_matcher_regexp(:censor)&.source.to_json};
@@ -286,7 +293,7 @@ module PrettyText
     doc.css("a").each do |l|
       href = l["href"].to_s
       begin
-        uri = URI(URI.escape(href))
+        uri = URI(UrlHelper.encode_component(href))
         site_uri ||= URI(Discourse.base_url)
 
         if !uri.host.present? ||
@@ -466,13 +473,13 @@ module PrettyText
 
         case type
         when USER_TYPE
-          element['href'] = "#{Discourse::base_uri}/u/#{URI.escape(name)}"
+          element['href'] = "#{Discourse::base_uri}/u/#{UrlHelper.encode_component(name)}"
         when GROUP_MENTIONABLE_TYPE
           element['class'] = 'mention-group notify'
-          element['href'] = "#{Discourse::base_uri}/groups/#{URI.escape(name)}"
+          element['href'] = "#{Discourse::base_uri}/groups/#{UrlHelper.encode_component(name)}"
         when GROUP_TYPE
           element['class'] = 'mention-group'
-          element['href'] = "#{Discourse::base_uri}/groups/#{URI.escape(name)}"
+          element['href'] = "#{Discourse::base_uri}/groups/#{UrlHelper.encode_component(name)}"
         end
       end
     end

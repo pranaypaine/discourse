@@ -2,7 +2,7 @@
 
 # See http://unicorn.bogomips.org/Unicorn/Configurator.html
 
-if ENV["LOGSTASH_UNICORN_URI"]
+if (ENV["LOGSTASH_UNICORN_URI"] || "").length > 0
   require_relative '../lib/discourse_logstash_logger'
   logger DiscourseLogstashLogger.logger(uri: ENV['LOGSTASH_UNICORN_URI'], type: :unicorn)
 end
@@ -162,7 +162,7 @@ before_fork do |server, worker|
               sleep 10
               force_kill_rogue_sidekiq
             end
-            Discourse.redis._client.disconnect
+            Discourse.redis.close
           end
         end
 
@@ -177,7 +177,7 @@ before_fork do |server, worker|
 
   end
 
-  Discourse.redis._client.disconnect
+  Discourse.redis.close
 
   # Throttle the master from forking too quickly by sleeping.  Due
   # to the implementation of standard Unix signal handlers, this

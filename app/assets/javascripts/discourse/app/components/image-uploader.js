@@ -1,3 +1,4 @@
+import { getURLWithCDN } from "discourse-common/lib/get-url";
 import discourseComputed from "discourse-common/utils/decorators";
 import { isEmpty } from "@ember/utils";
 import { next } from "@ember/runloop";
@@ -43,7 +44,7 @@ export default Component.extend(UploadMixin, {
       return "".htmlSafe();
     }
 
-    return Discourse.getURLWithCDN(url);
+    return getURLWithCDN(url);
   },
 
   @discourseComputed("imageCDNURL")
@@ -85,7 +86,7 @@ export default Component.extend(UploadMixin, {
   },
 
   _applyLightbox() {
-    if (this.imageUrl) next(() => lightbox($(this.element)));
+    if (this.imageUrl) next(() => lightbox(this.element));
   },
 
   actions: {

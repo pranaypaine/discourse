@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import discourseComputed from "discourse-common/utils/decorators";
 import { makeArray } from "discourse-common/lib/helpers";
 import { inject } from "@ember/controller";
@@ -7,6 +8,7 @@ import AdminDashboard from "admin/models/admin-dashboard";
 import Report from "admin/models/report";
 import PeriodComputationMixin from "admin/mixins/period-computation";
 import { computed } from "@ember/object";
+import getURL from "discourse-common/lib/get-url";
 
 function staticReport(reportType) {
   return computed("reports.[]", function() {
@@ -19,7 +21,6 @@ export default Controller.extend(PeriodComputationMixin, {
   dashboardFetchedAt: null,
   exceptionController: inject("exception"),
   logSearchQueriesEnabled: setting("log_search_queries"),
-  basePath: Discourse.BaseUri,
 
   @discourseComputed("siteSettings.dashboard_general_tab_activity_metrics")
   activityMetrics(metrics) {
@@ -106,7 +107,7 @@ export default Controller.extend(PeriodComputationMixin, {
   @discourseComputed
   trendingSearchDisabledLabel() {
     return I18n.t("admin.dashboard.reports.trending_search.disabled", {
-      basePath: Discourse.BaseUri
+      basePath: getURL("/")
     });
   },
 
@@ -149,6 +150,6 @@ export default Controller.extend(PeriodComputationMixin, {
   },
 
   _reportsForPeriodURL(period) {
-    return Discourse.getURL(`/admin?period=${period}`);
+    return getURL(`/admin?period=${period}`);
   }
 });

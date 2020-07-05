@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import { debounce, later, next, schedule, scheduleOnce } from "@ember/runloop";
 import { inject as service } from "@ember/service";
 import Component from "@ember/component";
@@ -8,7 +9,7 @@ import discourseComputed, {
 } from "discourse-common/utils/decorators";
 import { categoryHashtagTriggerRule } from "discourse/lib/category-hashtags";
 import { search as searchCategoryTag } from "discourse/lib/category-tag-search";
-import { cookAsync } from "discourse/lib/text";
+import { generateCookFunction } from "discourse/lib/text";
 import { getRegister } from "discourse-common/lib/get-owner";
 import { findRawTemplate } from "discourse-common/lib/raw-templates";
 import { siteDir } from "discourse/lib/text-direction";
@@ -27,7 +28,8 @@ import { emojiSearch, isSkinTonableEmoji } from "pretty-text/emoji";
 import { emojiUrlFor } from "discourse/lib/text";
 import showModal from "discourse/lib/show-modal";
 import { Promise } from "rsvp";
-import ENV from "discourse-common/config/environment";
+import { isTesting } from "discourse-common/config/environment";
+import { SKIP } from "discourse/lib/autocomplete";
 
 // Our head can be a static string or a function that returns a string
 // based on input (like for numbered lists).
@@ -343,18 +345,32 @@ export default Component.extend({
     return toolbar;
   },
 
+  cachedCookAsync(text) {
+    if (this._cachedCookFunction) {
+      return Promise.resolve(this._cachedCookFunction(text));
+    }
+
+    const markdownOptions = this.markdownOptions || {};
+    return generateCookFunction(markdownOptions).then(cook => {
+      this._cachedCookFunction = cook;
+      return cook(text);
+    });
+  },
+
   _updatePreview() {
     if (this._state !== "inDOM") {
       return;
     }
 
     const value = this.value;
-    const markdownOptions = this.markdownOptions || {};
 
-    cookAsync(value, markdownOptions).then(cooked => {
+    this.cachedCookAsync(value).then(cooked => {
       if (this.isDestroyed) {
         return;
       }
+
+      if (this.preview === cooked) return;
+
       this.set("preview", cooked);
       schedule("afterRender", () => {
         if (this._state !== "inDOM") {
@@ -377,7 +393,7 @@ export default Component.extend({
     }
 
     // Debouncing in test mode is complicated
-    if (ENV.environment === "test") {
+    if (isTesting()) {
       this._updatePreview();
     } else {
       debounce(this, this._updatePreview, 30);
@@ -424,7 +440,7 @@ export default Component.extend({
           return false;
         }
 
-        const matches = /(?:^|[^a-z])(:(?!:).?[\w-]*:?(?!:)(?:t\d?)?:?) ?$/gi.exec(
+        const matches = /(?:^|[\s.\?,@\/#!%&*;:\[\]{}=\-_()])(:(?!:).?[\w-]*:?(?!:)(?:t\d?)?:?) ?$/gi.exec(
           text.substring(0, cp)
         );
 
@@ -465,7 +481,7 @@ export default Component.extend({
           term = term.toLowerCase();
 
           if (term.length < this.siteSettings.emoji_autocomplete_min_chars) {
-            return resolve([]);
+            return resolve(SKIP);
           }
 
           if (term === "") {
@@ -482,8 +498,15 @@ export default Component.extend({
             }
           }
 
-          if (translations[full]) {
-            return resolve([translations[full]]);
+          // note this will only work for emojis starting with :
+          // eg: :-)
+          const allTranslations = Object.assign(
+            {},
+            translations,
+            this.getWithDefault("site.custom_emoji_translation", {})
+          );
+          if (allTranslations[full]) {
+            return resolve([allTranslations[full]]);
           }
 
           const match = term.match(/^:?(.*?):t([2-6])?$/);
@@ -897,8 +920,16 @@ export default Component.extend({
 
   // ensures textarea scroll position is correct
   _focusTextArea() {
-    const textarea = this.element.querySelector("textarea.d-editor-input");
     schedule("afterRender", () => {
+      if (!this.element || this.isDestroying || this.isDestroyed) {
+        return;
+      }
+
+      const textarea = this.element.querySelector("textarea.d-editor-input");
+      if (!textarea) {
+        return;
+      }
+
       textarea.blur();
       textarea.focus();
     });

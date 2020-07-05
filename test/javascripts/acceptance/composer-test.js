@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import { run } from "@ember/runloop";
 import selectKit from "helpers/select-kit-helper";
 import { acceptance } from "helpers/qunit-helpers";
@@ -17,7 +18,7 @@ acceptance("Composer", {
   }
 });
 
-QUnit.test("Tests the Composer controls", async assert => {
+QUnit.skip("Tests the Composer controls", async assert => {
   await visit("/");
   assert.ok(exists("#create-topic"), "the create button is visible");
 
@@ -267,6 +268,24 @@ QUnit.test("Create a Reply", async assert => {
   assert.equal(
     find(".cooked:last p").text(),
     "If you use gettext format you could leverage Launchpad 13 translations and the community behind it."
+  );
+});
+
+QUnit.test("Can edit a post after starting a reply", async assert => {
+  await visit("/t/internationalization-localization/280");
+
+  await click("#topic-footer-buttons .create");
+  await fillIn(".d-editor-input", "this is the content of my reply");
+
+  await click(".topic-post:eq(0) button.show-more-actions");
+  await click(".topic-post:eq(0) button.edit");
+
+  await click("a[data-handler='0']");
+
+  assert.ok(!visible(".bootbox.modal"));
+  assert.equal(
+    find(".d-editor-input").val(),
+    "this is the content of my reply"
   );
 });
 

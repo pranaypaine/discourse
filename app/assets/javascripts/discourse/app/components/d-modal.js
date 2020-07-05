@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import { next } from "@ember/runloop";
 import { on } from "discourse-common/utils/decorators";
 import Component from "@ember/component";
@@ -35,7 +36,7 @@ export default Component.extend({
   setUp() {
     $("html").on("keyup.discourse-modal", e => {
       //only respond to events when the modal is visible
-      if ($("#discourse-modal:visible").length > 0) {
+      if (!this.element.classList.contains("hidden")) {
         if (e.which === 27 && this.dismissable) {
           next(() => $(".modal-header button.modal-close").click());
         }

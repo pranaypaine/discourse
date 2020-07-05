@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import { makeArray } from "discourse-common/lib/helpers";
 import { createWidget } from "discourse/widgets/widget";
 import { h } from "virtual-dom";
@@ -26,7 +28,7 @@ createWidget("pm-map-user-group", {
   tagName: "div.user.group",
 
   transform(attrs) {
-    return { href: Discourse.getURL(`/g/${attrs.group.name}`) };
+    return { href: getURL(`/g/${attrs.group.name}`) };
   },
 
   template: hbs`

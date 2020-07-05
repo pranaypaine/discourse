@@ -52,7 +52,9 @@ class ListController < ApplicationController
       list_opts = build_topic_list_options
       list_opts.merge!(options) if options
       user = list_target_user
-      list_opts[:no_definitions] = true if params[:category].blank? && filter == :latest
+      if params[:category].blank? && filter == :latest && !SiteSetting.show_category_definitions_in_topic_lists
+        list_opts[:no_definitions] = true
+      end
 
       list = TopicQuery.new(user, list_opts).public_send("list_#{filter}")
 
@@ -121,6 +123,8 @@ class ListController < ApplicationController
   def topics_by
     list_opts = build_topic_list_options
     target_user = fetch_user_from_params({ include_inactive: current_user.try(:staff?) || (current_user && SiteSetting.show_inactive_accounts) }, [:user_stat, :user_option])
+    ensure_can_see_profile!(target_user)
+
     list = generate_list_for("topics_by", target_user, list_opts)
     list.more_topics_url = construct_url_with(:next, list_opts)
     list.prev_topics_url = construct_url_with(:prev, list_opts)
@@ -142,6 +146,10 @@ class ListController < ApplicationController
 
   def self.generate_message_route(action)
     define_method("#{action}") do
+      if action == :private_messages_tag && !guardian.can_tag_pms?
+        raise Discourse::NotFound
+      end
+
       list_opts = build_topic_list_options
       target_user = fetch_user_from_params({ include_inactive: current_user.try(:staff?) }, [:user_stat, :user_option])
       guardian.ensure_can_see_private_messages!(target_user.id)
@@ -205,6 +213,7 @@ class ListController < ApplicationController
   def user_topics_feed
     discourse_expires_in 1.minute
     target_user = fetch_user_from_params
+    ensure_can_see_profile!(target_user)
 
     @title = "#{SiteSetting.title} - #{I18n.t("rss_description.user_topics", username: target_user.username)}"
     @link = "#{Discourse.base_url}/u/#{target_user.username}/activity/topics"
@@ -331,7 +340,13 @@ class ListController < ApplicationController
 
     params[:category] = @category.id.to_s
 
-    @description_meta = @category.description_text
+    @description_meta = if @category.uncategorized?
+      I18n.t('category.uncategorized_description', locale: SiteSetting.default_locale)
+    else
+      @category.description_text
+    end
+    @description_meta = SiteSetting.site_description if @description_meta.blank?
+
     if !guardian.can_see?(@category)
       if SiteSetting.detailed_404
         raise Discourse::InvalidAccess
@@ -377,6 +392,10 @@ class ListController < ApplicationController
     opts.delete(:category) if page_params.include?(:category_slug_path_with_id)
 
     public_send(method, opts.merge(page_params)).sub('.json?', '?')
+  end
+
+  def ensure_can_see_profile!(target_user = nil)
+    raise Discourse::NotFound unless guardian.can_see_profile?(target_user)
   end
 
   def self.best_period_for(previous_visit_at, category_id = nil)

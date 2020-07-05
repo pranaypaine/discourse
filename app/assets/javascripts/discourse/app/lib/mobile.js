@@ -1,5 +1,4 @@
-import deprecated from "discourse-common/lib/deprecated";
-import ENV from "discourse-common/config/environment";
+import { isTesting } from "discourse-common/config/environment";
 
 let mobileForced = false;
 
@@ -13,7 +12,7 @@ const Mobile = {
     this.isMobileDevice = mobileForced || $html.hasClass("mobile-device");
     this.mobileView = mobileForced || $html.hasClass("mobile-view");
 
-    if (ENV.environment === "test" || mobileForced) {
+    if (isTesting() || mobileForced) {
       return;
     }
 
@@ -64,14 +63,5 @@ export function forceMobile() {
 export function resetMobile() {
   mobileForced = false;
 }
-
-Object.defineProperty(Discourse, "Mobile", {
-  get() {
-    deprecated(
-      "`Discourse.Mobile` is deprecated, use `this.site.mobileView` instead"
-    );
-    return Mobile;
-  }
-});
 
 export default Mobile;

@@ -15,15 +15,20 @@ describe UsernameChanger do
       let(:new_username) { "#{user.username}1234" }
 
       it 'should change the username' do
-        event = DiscourseEvent.track_events {
+        events = DiscourseEvent.track_events {
           @result = UsernameChanger.change(user, new_username)
-        }.last
+        }.last(2)
 
         expect(@result).to eq(true)
 
+        event = events.first
         expect(event[:event_name]).to eq(:username_changed)
         expect(event[:params].first).to eq(old_username)
         expect(event[:params].second).to eq(new_username)
+
+        event = events.last
+        expect(event[:event_name]).to eq(:user_updated)
+        expect(event[:params].first).to eq(user)
 
         user.reload
         expect(user.username).to eq(new_username)
@@ -559,8 +564,8 @@ describe UsernameChanger do
         notified_user = Fabricate(:user)
         p1 = Fabricate(:post, post_number: 1, user: renamed_user)
         p2 = Fabricate(:post, post_number: 1, user: another_user)
-        Fabricate(:invite, invited_by: notified_user, user: renamed_user)
-        Fabricate(:invite, invited_by: notified_user, user: another_user)
+        Fabricate(:invited_user, invite: Fabricate(:invite, invited_by: notified_user), user: renamed_user)
+        Fabricate(:invited_user, invite: Fabricate(:invite, invited_by: notified_user), user: another_user)
 
         n01 = create_notification(:mentioned, notified_user, p1, original_and_display_username("alice"))
         n02 = create_notification(:mentioned, notified_user, p2, original_and_display_username("another_user"))

@@ -2,15 +2,20 @@
 import Application from "@ember/application";
 import { computed } from "@ember/object";
 import { buildResolver } from "discourse-common/resolver";
+import { bind } from "@ember/runloop";
 import discourseComputed, { observes } from "discourse-common/utils/decorators";
-import FocusEvent from "discourse-common/mixins/focus-event";
+import { default as getURL, getURLWithCDN } from "discourse-common/lib/get-url";
+import deprecated from "discourse-common/lib/deprecated";
 
 const _pluginCallbacks = [];
 
-const Discourse = Application.extend(FocusEvent, {
+const Discourse = Application.extend({
   rootElement: "#main",
   _docTitle: document.title,
   __widget_helpers: {},
+  hasFocus: null,
+  _boundFocusChange: null,
+
   customEvents: {
     paste: "paste"
   },
@@ -18,29 +23,40 @@ const Discourse = Application.extend(FocusEvent, {
   reset() {
     this._super(...arguments);
     Mousetrap.reset();
+
+    document.removeEventListener("visibilitychange", this._boundFocusChange);
+    document.removeEventListener("resume", this._boundFocusChange);
+    document.removeEventListener("freeze", this._boundFocusChange);
+
+    this._boundFocusChange = null;
+  },
+
+  ready() {
+    this._super(...arguments);
+    this._boundFocusChange = bind(this, this._focusChanged);
+
+    // Default to true
+    this.set("hasFocus", true);
+
+    document.addEventListener("visibilitychange", this._boundFocusChange);
+    document.addEventListener("resume", this._boundFocusChange);
+    document.addEventListener("freeze", this._boundFocusChange);
   },
 
   getURL(url) {
-    if (!url) return url;
-
-    // if it's a non relative URL, return it.
-    if (url !== "/" && !/^\/[^\/]/.test(url)) return url;
-
-    if (url[0] !== "/") url = "/" + url;
-    if (url.startsWith(this.BaseUri)) return url;
-
-    return this.BaseUri + url;
+    deprecated(
+      "Import `getURL` from `discourse-common/lib/get-url` instead of `Discourse.getURL`",
+      { since: "2.5", dropFrom: "2.6" }
+    );
+    return getURL(url);
   },
 
   getURLWithCDN(url) {
-    url = this.getURL(url);
-    // only relative urls
-    if (this.CDN && /^\/[^\/]/.test(url)) {
-      url = this.CDN + url;
-    } else if (this.S3CDN) {
-      url = url.replace(this.S3BaseUrl, this.S3CDN);
-    }
-    return url;
+    deprecated(
+      "Import `getURLWithCDN` from `discourse-common/lib/get-url` instead of `Discourse.getURLWithCDN`",
+      { since: "2.5", dropFrom: "2.6" }
+    );
+    return getURLWithCDN(url);
   },
 
   Resolver: buildResolver("discourse"),
@@ -178,7 +194,19 @@ const Discourse = Application.extend(FocusEvent, {
       }
       return this.currentAssetVersion;
     }
-  })
+  }),
+
+  _focusChanged() {
+    if (document.visibilityState === "hidden") {
+      if (this.hasFocus) {
+        this.set("hasFocus", false);
+        this.appEvents.trigger("discourse:focus-changed", false);
+      }
+    } else if (!this.hasFocus) {
+      this.set("hasFocus", true);
+      this.appEvents.trigger("discourse:focus-changed", true);
+    }
+  }
 });
 
 export default Discourse;

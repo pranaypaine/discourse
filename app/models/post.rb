@@ -10,8 +10,10 @@ class Post < ActiveRecord::Base
   include HasCustomFields
   include LimitedEdit
 
-  # remove line Jan 2021
-  self.ignored_columns = ["avg_time"]
+  self.ignored_columns = [
+    "avg_time", # TODO(2021-01-04): remove
+    "image_url" # TODO(2021-06-01): remove
+  ]
 
   cattr_accessor :plugin_permitted_create_params
   self.plugin_permitted_create_params = {}
@@ -36,7 +38,7 @@ class Post < ActiveRecord::Base
   has_many :topic_links
   has_many :group_mentions, dependent: :destroy
 
-  has_many :post_uploads
+  has_many :post_uploads, dependent: :delete_all
   has_many :uploads, through: :post_uploads
 
   has_one :post_stat
@@ -50,6 +52,7 @@ class Post < ActiveRecord::Base
   has_many :revisions, -> { order(:number) }, foreign_key: :post_id, class_name: 'PostRevision'
 
   has_many :user_actions, foreign_key: :target_post_id
+  has_one :post_search_data, dependent: :delete
 
   belongs_to :image_upload, class_name: "Upload"
 
@@ -159,14 +162,6 @@ class Post < ActiveRecord::Base
     includes(:post_details).find_by(post_details: { key: key, value: value })
   end
 
-  def self.excerpt_size=(sz)
-    @excerpt_size = sz
-  end
-
-  def self.excerpt_size
-    @excerpt_size || 220
-  end
-
   def whisper?
     post_type == Post.types[:whisper]
   end
@@ -261,7 +256,7 @@ class Post < ActiveRecord::Base
   end
 
   def self.white_listed_image_classes
-    @white_listed_image_classes ||= ['avatar', 'favicon', 'thumbnail', 'emoji']
+    @white_listed_image_classes ||= ['avatar', 'favicon', 'thumbnail', 'emoji', 'ytp-thumbnail-image']
   end
 
   def post_analyzer
@@ -482,7 +477,7 @@ class Post < ActiveRecord::Base
   end
 
   def excerpt_for_topic
-    Post.excerpt(cooked, Post.excerpt_size, strip_links: true, strip_images: true, post: self)
+    Post.excerpt(cooked, SiteSetting.topic_excerpt_maxlength, strip_links: true, strip_images: true, post: self)
   end
 
   def is_first_post?
@@ -658,6 +653,10 @@ class Post < ActiveRecord::Base
       baked_version: BAKED_VERSION
     )
 
+    if is_first_post?
+      topic&.update_excerpt(excerpt_for_topic)
+    end
+
     if invalidate_broken_images
       custom_fields.delete(BROKEN_IMAGES)
       save_custom_fields
@@ -752,19 +751,18 @@ class Post < ActiveRecord::Base
   end
 
   # Enqueue post processing for this post
-  def trigger_post_process(bypass_bump: false, priority: :normal, new_post: false)
+  def trigger_post_process(bypass_bump: false, priority: :normal, new_post: false, skip_pull_hotlinked_images: false)
     args = {
-      post_id: id,
       bypass_bump: bypass_bump,
+      cooking_options: self.cooking_options,
       new_post: new_post,
+      post_id: id,
+      skip_pull_hotlinked_images: skip_pull_hotlinked_images,
     }
-    args[:image_sizes] = image_sizes if image_sizes.present?
-    args[:invalidate_oneboxes] = true if invalidate_oneboxes.present?
-    args[:cooking_options] = self.cooking_options
 
-    if priority && priority != :normal
-      args[:queue] = priority.to_s
-    end
+    args[:image_sizes] = image_sizes if self.image_sizes.present?
+    args[:invalidate_oneboxes] = true if self.invalidate_oneboxes.present?
+    args[:queue] = priority.to_s if priority && priority != :normal
 
     Jobs.enqueue(:process_post, args)
     DiscourseEvent.trigger(:after_trigger_post_process, self)
@@ -1148,7 +1146,6 @@ end
 #  raw_email               :text
 #  public_version          :integer          default(1), not null
 #  action_code             :string
-#  image_url               :string
 #  locked_by_id            :integer
 #  image_upload_id         :bigint
 #

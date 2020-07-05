@@ -5,6 +5,7 @@
       {{#link-to "user" model.username}}
         {{bound-avatar-template model.avatar_template "small"}} {{model.username}}
       {{/link-to}}
+      {{plugin-outlet name="revision-user-details-after" noTags=true args=(hash model=model)}}
       <span class="date">{{bound-date model.created_at}}</span>
       {{#if model.edit_reason}}
         &mdash; <span class="edit-reason">{{model.edit_reason}}</span>
@@ -127,7 +128,7 @@
       {{/if}}
 
       {{#if displayRevert}}
-        {{d-button action=(action "revertToVersion") icon="undo" label="post.revisions.controls.revert" class="btn-danger" disabled=loading}}
+        {{d-button action=(action "revertToVersion") icon="undo" translatedLabel=revertToRevisionText class="btn-danger" disabled=loading}}
       {{/if}}
 
       {{#if displayHide}}

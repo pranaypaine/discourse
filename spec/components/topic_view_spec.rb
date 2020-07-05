@@ -244,8 +244,19 @@ describe TopicView do
       end
 
       it "generates a canonical correctly for paged results" do
-        expect(TopicView.new(1234, user, post_number: 10 * TopicView.chunk_size)
-          .canonical_path).to eql("/1234?page=10")
+        5.times { |i| Fabricate(:post, post_number: i + 1, topic: topic) }
+
+        expect(TopicView.new(1234, user, post_number: 5, limit: 2)
+          .canonical_path).to eql("/1234?page=3")
+      end
+
+      it "generates canonical path correctly by skipping whisper posts" do
+        2.times { |i| Fabricate(:post, post_number: i + 1, topic: topic) }
+        2.times { |i| Fabricate(:whisper, post_number: i + 3, topic: topic) }
+        Fabricate(:post, post_number: 5, topic: topic)
+
+        expect(TopicView.new(1234, user, post_number: 5, limit: 2)
+          .canonical_path).to eql("/1234?page=2")
       end
     end
 
@@ -726,9 +737,9 @@ describe TopicView do
       end
 
       it "uses the topic image as a fallback when posts have no image" do
-        expect(topic_view_for_post(1).image_url).to eq(op_upload.url)
-        expect(topic_view_for_post(2).image_url).to eq(op_upload.url)
-        expect(topic_view_for_post(3).image_url).to eq(post3_upload.url)
+        expect(topic_view_for_post(1).image_url).to end_with(op_upload.url)
+        expect(topic_view_for_post(2).image_url).to end_with(op_upload.url)
+        expect(topic_view_for_post(3).image_url).to end_with(post3_upload.url)
       end
     end
 
@@ -736,7 +747,7 @@ describe TopicView do
       it "returns nil when posts have no image" do
         expect(topic_view_for_post(1).image_url).to eq(nil)
         expect(topic_view_for_post(2).image_url).to eq(nil)
-        expect(topic_view_for_post(3).image_url).to eq(post3_upload.url)
+        expect(topic_view_for_post(3).image_url).to end_with(post3_upload.url)
       end
     end
   end

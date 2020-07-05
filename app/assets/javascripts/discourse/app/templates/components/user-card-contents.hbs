@@ -104,6 +104,10 @@
               label="admin.user.delete"}}
             </li>
           {{/if}}
+          {{plugin-outlet
+            name="user-card-additional-buttons"
+            args=(hash user=this.user close=(action "close"))
+            tagName="li"}}
         </ul>
         {{plugin-outlet
         name="user-card-additional-controls"
@@ -125,7 +129,11 @@
             <div class="suspended">
               <div class="suspension-date">
                 {{d-icon "ban"}}
-                {{i18n "user.suspended_notice" date=this.user.suspendedTillDate}}
+                {{#if this.user.suspendedForever}}
+                  {{i18n 'user.suspended_permanently'}}
+                {{else}}
+                  {{i18n 'user.suspended_notice' date=this.user.suspendedTillDate}}
+                {{/if}}
               </div>
               <div class="suspension-reason">
                 <span class="suspension-reason-title">{{i18n "user.suspended_reason"}}</span>

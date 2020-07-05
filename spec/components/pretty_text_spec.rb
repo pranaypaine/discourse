@@ -508,7 +508,7 @@ describe PrettyText do
         ['apple', 'banana'].each { |w| Fabricate(:watched_word, word: w, action: WatchedWord.actions[:censor]) }
         expect(PrettyText.cook("# banana")).not_to include('banana')
       ensure
-        Discourse.redis.flushall
+        Discourse.redis.flushdb
       end
     end
   end
@@ -1040,6 +1040,27 @@ describe PrettyText do
     end
   end
 
+  describe "custom emoji translation" do
+    before do
+      PrettyText.reset_translations
+
+      SiteSetting.enable_emoji = true
+      SiteSetting.enable_emoji_shortcuts = true
+
+      plugin = Plugin::Instance.new
+      plugin.translate_emoji "0:)", "otter"
+    end
+
+    after do
+      Plugin::CustomEmoji.clear_cache
+      PrettyText.reset_translations
+    end
+
+    it "sets the custom translation" do
+      expect(PrettyText.cook("hello 0:)")).to match(/otter/)
+    end
+  end
+
   it "replaces skin toned emoji" do
     expect(PrettyText.cook("hello 👱🏿‍♀️")).to eq("<p>hello <img src=\"/images/emoji/twitter/blonde_woman/6.png?v=#{Emoji::EMOJI_VERSION}\" title=\":blonde_woman:t6:\" class=\"emoji\" alt=\":blonde_woman:t6:\"></p>")
     expect(PrettyText.cook("hello 👩‍🎤")).to eq("<p>hello <img src=\"/images/emoji/twitter/woman_singer.png?v=#{Emoji::EMOJI_VERSION}\" title=\":woman_singer:\" class=\"emoji\" alt=\":woman_singer:\"></p>")
@@ -1085,9 +1106,9 @@ describe PrettyText do
 
     [
       "<span class=\"hashtag\">#unknown::tag</span>",
-      "<a class=\"hashtag\" href=\"#{category2.url_with_id}\">#<span>known</span></a>",
+      "<a class=\"hashtag\" href=\"#{category2.url}\">#<span>known</span></a>",
       "<a class=\"hashtag\" href=\"http://test.localhost/tag/known\">#<span>known</span></a>",
-      "<a class=\"hashtag\" href=\"#{category.url_with_id}\">#<span>testing</span></a>"
+      "<a class=\"hashtag\" href=\"#{category.url}\">#<span>testing</span></a>"
     ].each do |element|
 
       expect(cooked).to include(element)
@@ -1166,7 +1187,7 @@ HTML
   end
 
   describe "censoring" do
-    after(:all) { Discourse.redis.flushall }
+    after(:all) { Discourse.redis.flushdb }
 
     def expect_cooked_match(raw, expected_cooked)
       expect(PrettyText.cook(raw)).to eq(expected_cooked)

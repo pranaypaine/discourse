@@ -38,7 +38,8 @@
       }
       .header-title {
         font-size: $font-0;
-        margin: 0 0 0.25em 0;
+        // the margin-bottom here is fragile, changing it can cause tag alignment issues
+        margin: 0 0 0.35em 0;
         .archetype-private_message & {
           // PMs might have participant avatars in the header
           margin: 0 0 0.15em 0;
@@ -84,8 +85,4 @@
 
 #main-outlet {
   padding-top: 4.2857em;
-}
-
-.search-link .badge-category {
-  display: none;
 }

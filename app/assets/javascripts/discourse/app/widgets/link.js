@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import { wantsNewWindow } from "discourse/lib/intercept-click";
 import { createWidget } from "discourse/widgets/widget";
 import { iconNode } from "discourse-common/lib/icon-library";
@@ -16,12 +18,12 @@ export default createWidget("link", {
         if (attrs.model) {
           params.push(attrs.model);
         }
-        return Discourse.getURL(
+        return getURL(
           router._routerMicrolib.generate.apply(router._routerMicrolib, params)
         );
       }
     } else {
-      return Discourse.getURL(attrs.href);
+      return getURL(attrs.href);
     }
   },
 

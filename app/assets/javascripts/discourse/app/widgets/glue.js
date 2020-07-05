@@ -2,7 +2,7 @@ import { cancel, scheduleOnce } from "@ember/runloop";
 import { diff, patch } from "virtual-dom";
 import { queryRegistry } from "discourse/widgets/widget";
 import DirtyKeys from "discourse/lib/dirty-keys";
-import ENV from "discourse-common/config/environment";
+import { isTesting } from "discourse-common/config/environment";
 
 export default class WidgetGlue {
   constructor(name, register, attrs) {
@@ -34,7 +34,7 @@ export default class WidgetGlue {
     cancel(this._timeout);
 
     // in test mode return early if store cannot be found
-    if (ENV.environment === "test") {
+    if (isTesting()) {
       try {
         this.register.lookup("service:store");
       } catch (e) {
@@ -58,11 +58,11 @@ export default class WidgetGlue {
       widget.vnode.children.forEach(child => {
         if (child.constructor.name === "CustomWidget") {
           widgets.push(child);
-          findWidgets(child, widgets);
+          findWidgets(child);
         }
       });
     };
-    findWidgets(this._tree, widgets);
+    findWidgets(this._tree);
     widgets.reverse().forEach(widget => widget.destroy());
 
     cancel(this._timeout);

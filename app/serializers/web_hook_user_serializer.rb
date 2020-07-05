@@ -8,6 +8,7 @@ class WebHookUserSerializer < UserSerializer
   end
 
   %i{
+    unconfirmed_emails
     can_edit
     can_edit_username
     can_edit_email
@@ -42,6 +43,8 @@ class WebHookUserSerializer < UserSerializer
   def include_email?
     scope.is_admin?
   end
+
+  alias_method :include_secondary_emails?, :include_email?
 
   def include_external_id?
     scope.is_admin? && object.single_sign_on_record

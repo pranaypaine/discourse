@@ -1,20 +1,18 @@
 import EmberRouter from "@ember/routing/router";
 import { defaultHomepage } from "discourse/lib/utilities";
 import { rewritePath } from "discourse/lib/url";
-import ENV from "discourse-common/config/environment";
 import Site from "discourse/models/site";
-
-const rootURL = Discourse.BaseUri;
+import { isTesting } from "discourse-common/config/environment";
+import getURL from "discourse-common/lib/get-url";
 
 const BareRouter = EmberRouter.extend({
-  rootURL,
-  location: ENV.environment === "test" ? "none" : "discourse-location",
+  location: isTesting() ? "none" : "discourse-location",
 
   handleURL(url) {
     url = rewritePath(url);
     const params = url.split("?");
 
-    if (params[0] === "/") {
+    if (params[0] === "/" || params[0] === "") {
       url = defaultHomepage();
       if (params[1] && params[1].length) {
         url = `${url}?${params[1]}`;
@@ -136,10 +134,10 @@ export function mapRoutes() {
     }
   });
 
-  return BareRouter.extend().map(function() {
+  return BareRouter.extend({
+    rootURL: getURL("/")
+  }).map(function() {
     tree.mapRoutes(this);
     this.route("unknown", { path: "*path" });
   });
 }
-
-export default BareRouter;

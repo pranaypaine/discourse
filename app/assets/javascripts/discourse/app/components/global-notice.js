@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import { bind, cancel } from "@ember/runloop";
 import Component from "@ember/component";
 import LogsNotice from "discourse/services/logs-notice";
@@ -104,7 +106,7 @@ export default Component.extend({
 
       if (this.site.wizard_required) {
         const requiredText = I18n.t("wizard_required", {
-          url: Discourse.getURL("/wizard")
+          url: getURL("/wizard")
         });
         notices.push(Notice.create({ text: requiredText, id: "alert-wizard" }));
       }

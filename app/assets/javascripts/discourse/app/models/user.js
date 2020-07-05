@@ -1,3 +1,6 @@
+import { getURLWithCDN } from "discourse-common/lib/get-url";
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import { A } from "@ember/array";
 import { isEmpty } from "@ember/utils";
 import { gt, equal, or } from "@ember/object/computed";
@@ -18,7 +21,7 @@ import UserAction from "discourse/models/user-action";
 import UserDraftsStream from "discourse/models/user-drafts-stream";
 import Group from "discourse/models/group";
 import { emojiUnescape } from "discourse/lib/text";
-import PreloadStore from "preload-store";
+import PreloadStore from "discourse/lib/preload-store";
 import { defaultHomepage } from "discourse/lib/utilities";
 import { userPath } from "discourse/lib/url";
 import Category from "discourse/models/category";
@@ -108,11 +111,7 @@ const User = RestModel.extend({
     if (isEmpty(bgUrl) || !Discourse.SiteSettings.allow_profile_backgrounds) {
       return "".htmlSafe();
     }
-    return (
-      "background-image: url(" +
-      Discourse.getURLWithCDN(bgUrl) +
-      ")"
-    ).htmlSafe();
+    return ("background-image: url(" + getURLWithCDN(bgUrl) + ")").htmlSafe();
   },
 
   @discourseComputed()
@@ -182,22 +181,22 @@ const User = RestModel.extend({
   @discourseComputed()
   mutedTopicsPath() {
     return defaultHomepage() === "latest"
-      ? Discourse.getURL("/?state=muted")
-      : Discourse.getURL("/latest?state=muted");
+      ? getURL("/?state=muted")
+      : getURL("/latest?state=muted");
   },
 
   @discourseComputed()
   watchingTopicsPath() {
     return defaultHomepage() === "latest"
-      ? Discourse.getURL("/?state=watching")
-      : Discourse.getURL("/latest?state=watching");
+      ? getURL("/?state=watching")
+      : getURL("/latest?state=watching");
   },
 
   @discourseComputed()
   trackingTopicsPath() {
     return defaultHomepage() === "latest"
-      ? Discourse.getURL("/?state=tracking")
-      : Discourse.getURL("/latest?state=tracking");
+      ? getURL("/?state=tracking")
+      : getURL("/latest?state=tracking");
   },
 
   @discourseComputed("username")
@@ -244,6 +243,13 @@ const User = RestModel.extend({
     return ajax(userPath(`${this.username_lower}/preferences/username`), {
       type: "PUT",
       data: { new_username }
+    });
+  },
+
+  addEmail(email) {
+    return ajax(userPath(`${this.username_lower}/preferences/email`), {
+      type: "POST",
+      data: { email }
     });
   },
 
@@ -374,6 +380,27 @@ const User = RestModel.extend({
       .finally(() => {
         this.set("isSaving", false);
       });
+  },
+
+  setPrimaryEmail(email) {
+    return ajax(userPath(`${this.username}/preferences/primary-email.json`), {
+      type: "PUT",
+      data: { email }
+    }).then(() => {
+      this.secondary_emails.removeObject(email);
+      this.secondary_emails.pushObject(this.email);
+      this.set("email", email);
+    });
+  },
+
+  destroyEmail(email) {
+    return ajax(userPath(`${this.username}/preferences/email.json`), {
+      type: "DELETE",
+      data: { email }
+    }).then(() => {
+      this.secondary_emails.removeObject(email);
+      this.unconfirmed_emails.removeObject(email);
+    });
   },
 
   changePassword() {
@@ -568,7 +595,7 @@ const User = RestModel.extend({
         );
       }
 
-      if (!isEmpty(json.user.groups)) {
+      if (!isEmpty(json.user.groups) && !isEmpty(json.user.group_users)) {
         const groups = [];
 
         for (let i = 0; i < json.user.groups.length; i++) {
@@ -655,6 +682,17 @@ const User = RestModel.extend({
     });
   },
 
+  generateMultipleUseInviteLink(
+    group_names,
+    max_redemptions_allowed,
+    expires_at
+  ) {
+    return ajax("/invites/link", {
+      type: "POST",
+      data: { group_names, max_redemptions_allowed, expires_at }
+    });
+  },
+
   @observes("muted_category_ids")
   updateMutedCategories() {
     this.set("mutedCategories", Category.findByIds(this.muted_category_ids));
@@ -732,6 +770,7 @@ const User = RestModel.extend({
         this.setProperties({
           email: result.email,
           secondary_emails: result.secondary_emails,
+          unconfirmed_emails: result.unconfirmed_emails,
           associated_accounts: result.associated_accounts
         });
       }
@@ -849,23 +888,34 @@ const User = RestModel.extend({
     );
   },
 
-  resolvedTimezone() {
-    if (this._timezone) {
+  resolvedTimezone(currentUser) {
+    if (this.hasSavedTimezone()) {
       return this._timezone;
     }
 
-    this.changeTimezone(moment.tz.guess());
-    ajax(userPath(this.username + ".json"), {
-      type: "PUT",
-      dataType: "json",
-      data: { timezone: this._timezone }
-    });
+    // only change the timezone and save it if we are
+    // looking at our own user
+    if (currentUser.id === this.id) {
+      this.changeTimezone(moment.tz.guess());
+      ajax(userPath(this.username + ".json"), {
+        type: "PUT",
+        dataType: "json",
+        data: { timezone: this._timezone }
+      });
+    }
 
     return this._timezone;
   },
 
   changeTimezone(tz) {
     this._timezone = tz;
+  },
+
+  hasSavedTimezone() {
+    if (this._timezone) {
+      return true;
+    }
+    return false;
   },
 
   calculateMutedIds(notificationLevel, id, type) {
@@ -979,18 +1029,20 @@ User.reopenClass(Singleton, {
   }
 });
 
-let warned = false;
-Object.defineProperty(Discourse, "User", {
-  get() {
-    if (!warned) {
-      deprecated("Import the User class instead of using User", {
-        since: "2.4.0",
-        dropFrom: "2.6.0"
-      });
-      warned = true;
+if (typeof Discourse !== "undefined") {
+  let warned = false;
+  Object.defineProperty(Discourse, "User", {
+    get() {
+      if (!warned) {
+        deprecated("Import the User class instead of using User", {
+          since: "2.4.0",
+          dropFrom: "2.6.0"
+        });
+        warned = true;
+      }
+      return User;
     }
-    return User;
-  }
-});
+  });
+}
 
 export default User;

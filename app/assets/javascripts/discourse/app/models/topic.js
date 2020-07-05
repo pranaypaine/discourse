@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import EmberObject from "@ember/object";
 import { not, notEmpty, equal, and, or } from "@ember/object/computed";
 import { ajax } from "discourse/lib/ajax";
@@ -10,7 +12,7 @@ import ActionSummary from "discourse/models/action-summary";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 import { censor } from "pretty-text/censored-words";
 import { emojiUnescape } from "discourse/lib/text";
-import PreloadStore from "preload-store";
+import PreloadStore from "discourse/lib/preload-store";
 import { userPath } from "discourse/lib/url";
 import discourseComputed, {
   observes,
@@ -24,7 +26,7 @@ import User from "discourse/models/user";
 
 export function loadTopicView(topic, args) {
   const data = _.merge({}, args);
-  const url = `${Discourse.getURL("/t/")}${topic.id}`;
+  const url = `${getURL("/t/")}${topic.id}`;
   const jsonUrl = (data.nearPost ? `${url}/${data.nearPost}` : url) + ".json";
 
   delete data.nearPost;
@@ -236,16 +238,6 @@ const Topic = RestModel.extend({
     this.set("category", Category.findById(this.category_id));
   },
 
-  @observes("categoryName")
-  _categoryNameChanged() {
-    const categoryName = this.categoryName;
-    let category;
-    if (categoryName) {
-      category = this.site.get("categories").findBy("name", categoryName);
-    }
-    this.set("category", category);
-  },
-
   categoryClass: fmt("category.fullSlug", "category-%@"),
 
   @discourseComputed("tags")
@@ -268,7 +260,7 @@ const Topic = RestModel.extend({
     if (slug.trim().length === 0) {
       slug = "topic";
     }
-    return `${Discourse.getURL("/t/")}${slug}/${id}`;
+    return `${getURL("/t/")}${slug}/${id}`;
   },
 
   // Helper to build a Url with a post number
@@ -438,8 +430,11 @@ const Topic = RestModel.extend({
     return this.firstPost().then(firstPost => {
       const toggleBookmarkOnServer = () => {
         if (bookmark) {
-          return firstPost.toggleBookmark().then(() => {
+          return firstPost.toggleBookmark().then(opts => {
             this.set("bookmarking", false);
+            if (opts.closedWithoutSaving) {
+              return;
+            }
             return this.afterTopicBookmarked(firstPost);
           });
         } else {
@@ -748,7 +743,7 @@ Topic.reopenClass({
 
   // Load a topic, but accepts a set of filters
   find(topicId, opts) {
-    let url = Discourse.getURL("/t/") + topicId;
+    let url = getURL("/t/") + topicId;
     if (opts.nearPost) {
       url += `/${opts.nearPost}`;
     }

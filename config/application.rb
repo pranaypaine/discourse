@@ -23,7 +23,6 @@ require 'sprockets/railtie'
 # Plugin related stuff
 require_relative '../lib/plugin_initialization_guard'
 require_relative '../lib/discourse_event'
-require_relative '../lib/discourse_plugin'
 require_relative '../lib/discourse_plugin_registry'
 
 require_relative '../lib/plugin_gem'
@@ -42,6 +41,14 @@ end
 if ENV['SKIP_DB_AND_REDIS'] == '1'
   GlobalSetting.skip_db = true
   GlobalSetting.skip_redis = true
+end
+
+if !GlobalSetting.skip_db?
+  require 'rails_failover/active_record'
+end
+
+if !GlobalSetting.skip_redis?
+  require 'rails_failover/redis'
 end
 
 require 'pry-rails' if Rails.env.development?
@@ -91,6 +98,13 @@ module Discourse
       end
     end
 
+    # we skip it cause we configure it in the initializer
+    # the railstie for message_bus would insert it in the
+    # wrong position
+    config.skip_message_bus_middleware = true
+    config.skip_multisite_middleware = true
+    config.skip_rails_failover_active_record_middleware = true
+
     # Disable so this is only run manually
     # we may want to change this later on
     # issue is image_optim crashes on missing dependencies
@@ -134,7 +148,6 @@ module Discourse
     config.assets.precompile += %w{
       vendor.js
       admin.js
-      preload-store.js
       browser-detect.js
       browser-update.js
       break_string.js
@@ -146,7 +159,7 @@ module Discourse
       service-worker.js
       google-tag-manager.js
       google-universal-analytics.js
-      preload-application-data.js
+      start-discourse.js
       print-page.js
       omniauth-complete.js
       activate-account.js
@@ -244,7 +257,11 @@ module Discourse
     config.exceptions_app = Middleware::DiscoursePublicExceptions.new(Rails.public_path)
 
     # Our templates shouldn't start with 'discourse/app/templates'
-    config.handlebars.templates_root = 'discourse/app/templates'
+    config.handlebars.templates_root = {
+      'discourse/app/templates' => '',
+      'select-kit/addon/templates' => 'select-kit/templates/'
+    }
+
     config.handlebars.raw_template_namespace = "__DISCOURSE_RAW_TEMPLATES"
     Sprockets.register_mime_type 'text/x-handlebars', extensions: ['.hbr']
     Sprockets.register_transformer 'text/x-handlebars', 'application/javascript', Ember::Handlebars::Template
@@ -348,10 +365,5 @@ module Discourse
     config.generators do |g|
       g.test_framework :rspec, fixture: false
     end
-
-    # we have a monkey_patch we need to require early... prior to connection
-    # init
-    require 'freedom_patches/reaper'
-
   end
 end

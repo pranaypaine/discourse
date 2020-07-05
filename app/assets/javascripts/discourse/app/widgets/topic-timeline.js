@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import { later } from "@ember/runloop";
 import { createWidget } from "discourse/widgets/widget";
 import ComponentConnector from "discourse/widgets/component-connector";
@@ -358,7 +359,7 @@ createWidget("timeline-footer-controls", {
       if (topic.get("details.can_create_post")) {
         controls.push(
           this.attach("button", {
-            className: "btn-default create",
+            className: "btn-default create reply-to-post",
             icon: "reply",
             title: "topic.reply.help",
             action: "replyToPost"
@@ -389,11 +390,21 @@ createWidget("timeline-footer-controls", {
             showFullTitle: false,
             appendReason: false,
             placement: "bottom-end",
-            mountedAsWidget: true
+            mountedAsWidget: true,
+            showCaret: false
           },
           ["notificationLevel"]
         )
       );
+      if (this.site.mobileView) {
+        controls.push(
+          this.attach("topic-admin-menu-button", {
+            topic,
+            addKeyboardTargetClass: true,
+            openUpwards: true
+          })
+        );
+      }
     }
 
     return controls;

@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import discourseComputed from "discourse-common/utils/decorators";
 import Controller from "@ember/controller";
 import { isPresent } from "@ember/utils";
@@ -56,14 +57,12 @@ export default Controller.extend({
 
   @discourseComputed
   sortOrders() {
-    return ["priority", "priority_asc", "created_at", "created_at_asc"].map(
-      order => {
-        return {
-          id: order,
-          name: I18n.t(`review.filters.orders.${order}`)
-        };
-      }
-    );
+    return ["score", "score_asc", "created_at", "created_at_asc"].map(order => {
+      return {
+        id: order,
+        name: I18n.t(`review.filters.orders.${order}`)
+      };
+    });
   },
 
   @discourseComputed
@@ -128,14 +127,14 @@ export default Controller.extend({
         priorityStatuses.includes(nextStatus) &&
         nextOrder === "created_at"
       ) {
-        nextOrder = "priority";
+        nextOrder = "score";
       }
 
       if (
         priorityStatuses.includes(currentStatus) &&
-        currentOrder === "priority" &&
+        currentOrder === "score" &&
         createdAtStatuses.includes(nextStatus) &&
-        nextOrder === "priority"
+        nextOrder === "score"
       ) {
         nextOrder = "created_at";
       }

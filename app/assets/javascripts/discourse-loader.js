@@ -1,14 +1,17 @@
 var define, requirejs;
 
 (function() {
-  // In future versions of ember we don't need this
-  var EMBER_MODULES = {};
+  var JS_MODULES = {};
   var ALIASES = {
     "ember-addons/ember-computed-decorators":
-      "discourse-common/utils/decorators"
+      "discourse-common/utils/decorators",
+    "discourse/lib/raw-templates": "discourse-common/lib/raw-templates",
+    "preload-store": "discourse/lib/preload-store"
   };
+
+  // In future versions of ember we don't need this
   if (typeof Ember !== "undefined") {
-    EMBER_MODULES = {
+    JS_MODULES = {
       jquery: { default: $ },
       "@ember/array": {
         default: Ember.Array,
@@ -33,7 +36,6 @@ var define, requirejs;
         default: Ember.Object,
         get: Ember.get,
         getProperties: Ember.getProperties,
-        guidFor: Ember.guidFor,
         set: Ember.set,
         setProperties: Ember.setProperties,
         computed: Ember.computed,
@@ -138,6 +140,10 @@ var define, requirejs;
       },
       "@ember/object/internals": {
         guidFor: Ember.guidFor
+      },
+      I18n: {
+        // eslint-disable-next-line
+        default: I18n
       }
     };
   }
@@ -279,7 +285,7 @@ var define, requirejs;
       name = "@ember/object";
     }
 
-    var mod = EMBER_MODULES[name] || registry[name];
+    var mod = JS_MODULES[name] || registry[name];
     if (!mod) {
       throw new Error(
         "Could not find module `" + name + "` imported from `" + origin + "`"
@@ -302,8 +308,8 @@ var define, requirejs;
 
   requirejs = require = function(name) {
     name = transformForAliases(name);
-    if (EMBER_MODULES[name]) {
-      return EMBER_MODULES[name];
+    if (JS_MODULES[name]) {
+      return JS_MODULES[name];
     }
 
     var mod = registry[name];

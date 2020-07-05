@@ -9,33 +9,38 @@ import TopicTrackingState, {
 import ScreenTrack from "discourse/lib/screen-track";
 import Site from "discourse/models/site";
 import User from "discourse/models/user";
+import MessageBus from "message-bus-client";
 
 const ALL_TARGETS = ["controller", "component", "route", "model", "adapter"];
 
 export default {
   name: "inject-discourse-objects",
+  after: "discourse-bootstrap",
 
   initialize(container, app) {
     ALL_TARGETS.forEach(t => app.inject(t, "appEvents", "service:app-events"));
 
     // backwards compatibility: remove when plugins have updated
     app.register("store:main", Store);
+    app.appEvents = container.lookup("service:app-events");
 
     if (!app.hasRegistration("service:store")) {
       app.register("service:store", Store);
       ALL_TARGETS.forEach(t => app.inject(t, "store", "service:store"));
     }
 
-    const messageBus = window.MessageBus;
-    app.register("message-bus:main", messageBus, { instantiate: false });
-    ALL_TARGETS.forEach(t => app.inject(t, "messageBus", "message-bus:main"));
+    app.register("message-bus:main", MessageBus, { instantiate: false });
+
+    ALL_TARGETS.concat("service").forEach(t =>
+      app.inject(t, "messageBus", "message-bus:main")
+    );
 
     const currentUser = User.current();
     app.register("current-user:main", currentUser, { instantiate: false });
     app.currentUser = currentUser;
 
     const topicTrackingState = TopicTrackingState.create({
-      messageBus,
+      messageBus: MessageBus,
       currentUser
     });
     app.register("topic-tracking-state:main", topicTrackingState, {
@@ -47,7 +52,7 @@ export default {
 
     const siteSettings = app.SiteSettings;
     app.register("site-settings:main", siteSettings, { instantiate: false });
-    ALL_TARGETS.forEach(t =>
+    ALL_TARGETS.concat("service").forEach(t =>
       app.inject(t, "siteSettings", "site-settings:main")
     );
 
@@ -77,7 +82,7 @@ export default {
     );
 
     if (currentUser) {
-      ["component", "route", "controller"].forEach(t => {
+      ["component", "route", "controller", "service"].forEach(t => {
         app.inject(t, "currentUser", "current-user:main");
       });
     }

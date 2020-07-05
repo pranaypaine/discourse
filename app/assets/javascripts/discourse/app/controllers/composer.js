@@ -1,6 +1,8 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import { isEmpty } from "@ember/utils";
 import { and, or, alias, reads } from "@ember/object/computed";
-import { debounce } from "@ember/runloop";
+import { cancel, debounce } from "@ember/runloop";
 import { inject as service } from "@ember/service";
 import { inject } from "@ember/controller";
 import Controller from "@ember/controller";
@@ -22,8 +24,8 @@ import { emojiUnescape } from "discourse/lib/text";
 import { shortDate } from "discourse/lib/formatter";
 import { SAVE_LABELS, SAVE_ICONS } from "discourse/models/composer";
 import { Promise } from "rsvp";
-import ENV from "discourse-common/config/environment";
-import EmberObject, { computed } from "@ember/object";
+import { isTesting } from "discourse-common/config/environment";
+import EmberObject, { computed, action } from "@ember/object";
 import deprecated from "discourse-common/lib/deprecated";
 
 function loadDraft(store, opts) {
@@ -70,7 +72,7 @@ function loadDraft(store, opts) {
 
 const _popupMenuOptionsCallbacks = [];
 
-let _checkDraftPopup = ENV.environment !== "test";
+let _checkDraftPopup = !isTesting();
 
 export function toggleCheckDraftPopup(enabled) {
   _checkDraftPopup = enabled;
@@ -95,8 +97,6 @@ export default Controller.extend({
   scopedCategoryId: null,
   lastValidatedAt: null,
   isUploading: false,
-  allowUpload: false,
-  uploadIcon: "upload",
   topic: null,
   linkLookup: null,
   showPreview: true,
@@ -221,26 +221,26 @@ export default Controller.extend({
   isWhispering: or("replyingToWhisper", "model.whisper"),
 
   @discourseComputed("model.action", "isWhispering")
-  saveIcon(action, isWhispering) {
+  saveIcon(modelAction, isWhispering) {
     if (isWhispering) return "far-eye-slash";
 
-    return SAVE_ICONS[action];
+    return SAVE_ICONS[modelAction];
   },
 
   @discourseComputed("model.action", "isWhispering", "model.editConflict")
-  saveLabel(action, isWhispering, editConflict) {
+  saveLabel(modelAction, isWhispering, editConflict) {
     if (editConflict) return "composer.overwrite_edit";
     else if (isWhispering) return "composer.create_whisper";
 
-    return SAVE_LABELS[action];
+    return SAVE_LABELS[modelAction];
   },
 
   @discourseComputed("isStaffUser", "model.action")
-  canWhisper(isStaffUser, action) {
+  canWhisper(isStaffUser, modelAction) {
     return (
       this.siteSettings.enable_whispers &&
       isStaffUser &&
-      Composer.REPLY === action
+      Composer.REPLY === modelAction
     );
   },
 
@@ -331,6 +331,20 @@ export default Controller.extend({
     return uploadIcon(this.currentUser.staff);
   },
 
+  @action
+  openIfDraft(event) {
+    if (this.get("model.viewDraft")) {
+      // when called from shortcut, ensure we don't propagate the key to
+      // the composer input title
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      this.set("model.composeState", Composer.OPEN);
+    }
+  },
+
   actions: {
     togglePreview() {
       this.toggleProperty("showPreview");
@@ -370,8 +384,8 @@ export default Controller.extend({
       this.set("model.uploadCancelled", true);
     },
 
-    onPopupMenuAction(action) {
-      this.send(action);
+    onPopupMenuAction(menuAction) {
+      this.send(menuAction);
     },
 
     storeToolbarState(toolbarEvent) {
@@ -541,12 +555,6 @@ export default Controller.extend({
       }
     },
 
-    openIfDraft() {
-      if (this.get("model.viewDraft")) {
-        this.set("model.composeState", Composer.OPEN);
-      }
-    },
-
     groupsMentioned(groups) {
       if (
         !this.get("model.creatingPrivateMessage") &&
@@ -554,7 +562,7 @@ export default Controller.extend({
       ) {
         groups.forEach(group => {
           let body;
-          const groupLink = Discourse.getURL(`/g/${group.name}/members`);
+          const groupLink = getURL(`/g/${group.name}/members`);
 
           if (group.max_mentions < group.user_count) {
             body = I18n.t("composer.group_mentioned_limit", {
@@ -725,12 +733,7 @@ export default Controller.extend({
 
         this.close();
 
-        const currentUser = this.currentUser;
-        if (composer.creatingTopic) {
-          currentUser.set("topic_count", currentUser.topic_count + 1);
-        } else {
-          currentUser.set("reply_count", currentUser.reply_count + 1);
-        }
+        this.currentUser.set("any_posts", true);
 
         const post = result.target;
         if (post && !staged) {
@@ -980,6 +983,10 @@ export default Controller.extend({
         this.send("clearTopicDraft");
       }
 
+      if (this._saveDraftPromise) {
+        return this._saveDraftPromise.then(() => this.destroyDraft());
+      }
+
       return Draft.clear(key, this.get("model.draftSequence")).then(() =>
         this.appEvents.trigger("draft:destroyed", key)
       );
@@ -1026,10 +1033,14 @@ export default Controller.extend({
   cancelComposer(differentDraft = false) {
     this.skipAutoSave = true;
 
+    if (this._saveDraftDebounce) {
+      cancel(this._saveDraftDebounce);
+    }
+
     const keyPrefix =
       this.model.action === "edit" ? "post.abandon_edit" : "post.abandon";
 
-    let promise = new Promise(resolve => {
+    let promise = new Promise((resolve, reject) => {
       if (this.get("model.hasMetaData") || this.get("model.replyDirty")) {
         bootbox.dialog(I18n.t(keyPrefix + ".confirm"), [
           {
@@ -1043,6 +1054,8 @@ export default Controller.extend({
                 this.close();
                 resolve();
               }
+
+              reject();
             }
           },
           {
@@ -1050,22 +1063,30 @@ export default Controller.extend({
             class: "btn-danger",
             callback: result => {
               if (result) {
-                this.destroyDraft().then(() => {
-                  this.model.clearState();
-                  this.close();
-                  resolve();
-                });
+                this.destroyDraft()
+                  .then(() => {
+                    this.model.clearState();
+                    this.close();
+                  })
+                  .finally(() => {
+                    resolve();
+                  });
+              } else {
+                resolve();
               }
             }
           }
         ]);
       } else {
         // it is possible there is some sort of crazy draft with no body ... just give up on it
-        this.destroyDraft().then(() => {
-          this.model.clearState();
-          this.close();
-          resolve();
-        });
+        this.destroyDraft()
+          .then(() => {
+            this.model.clearState();
+            this.close();
+          })
+          .finally(() => {
+            resolve();
+          });
       }
     });
 
@@ -1088,7 +1109,18 @@ export default Controller.extend({
   _saveDraft() {
     const model = this.model;
     if (model) {
-      model.saveDraft();
+      if (model.draftSaving) {
+        // in test debounce is Ember.run, this will cause
+        // an infinite loop
+        if (!isTesting()) {
+          this._saveDraftDebounce = debounce(this, this._saveDraft, 2000);
+        }
+      } else {
+        this._saveDraftPromise = model.saveDraft().finally(() => {
+          this._lastDraftSaved = Date.now();
+          this._saveDraftPromise = null;
+        });
+      }
     }
   },
 
@@ -1100,7 +1132,15 @@ export default Controller.extend({
       !this.skipAutoSave &&
       !this.model.disableDrafts
     ) {
-      debounce(this, this._saveDraft, 2000);
+      if (!this._lastDraftSaved) {
+        // pretend so we get a save unconditionally in 15 secs
+        this._lastDraftSaved = Date.now();
+      }
+      if (Date.now() - this._lastDraftSaved > 15000) {
+        this._saveDraft();
+      } else {
+        this._saveDraftDebounce = debounce(this, this._saveDraft, 2000);
+      }
     }
   },
 
@@ -1120,6 +1160,7 @@ export default Controller.extend({
     const tagsArray = tags || [];
     if (
       this.site.can_tag_topics &&
+      !this.currentUser.staff &&
       category &&
       category.minimum_required_tags > tagsArray.length
     ) {
@@ -1155,6 +1196,7 @@ export default Controller.extend({
     const elem = document.querySelector("html");
     elem.classList.remove("fullscreen-composer");
 
+    document.activeElement && document.activeElement.blur();
     this.setProperties({ model: null, lastValidatedAt: null });
   },
 
@@ -1163,8 +1205,8 @@ export default Controller.extend({
   },
 
   @discourseComputed("model.action")
-  canEdit(action) {
-    return action === "edit" && this.currentUser.can_edit;
+  canEdit(modelAction) {
+    return modelAction === "edit" && this.currentUser.can_edit;
   },
 
   @discourseComputed("model.composeState")

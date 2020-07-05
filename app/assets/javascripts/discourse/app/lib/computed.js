@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import { computed } from "@ember/object";
 import { htmlSafe as htmlSafeTemplateHelper } from "@ember/template";
 
@@ -125,7 +127,7 @@ export function fmt(...args) {
 export function url(...args) {
   const format = args.pop();
   return computed(...args, function() {
-    return Discourse.getURL(addonFmt(format, ...args.map(a => this.get(a))));
+    return getURL(addonFmt(format, ...args.map(a => this.get(a))));
   });
 }
 

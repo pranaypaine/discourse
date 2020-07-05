@@ -26,11 +26,11 @@ describe SearchController do
     before do
       # TODO be a bit more strategic here instead of junking
       # all of redis
-      Discourse.redis.flushall
+      Discourse.redis.flushdb
     end
 
     after do
-      Discourse.redis.flushall
+      Discourse.redis.flushdb
     end
 
     context "when overloaded" do
@@ -68,7 +68,7 @@ describe SearchController do
 
         expect(response.status).to eq(200)
 
-        data = JSON.parse(response.body)
+        data = response.parsed_body
 
         expect(data["posts"]).to be_empty
         expect(data["grouped_search_result"]["error"]).not_to be_empty
@@ -93,7 +93,7 @@ describe SearchController do
 
       expect(response.status).to eq(200)
 
-      data = JSON.parse(response.body)
+      data = response.parsed_body
 
       expect(data['posts'].length).to eq(1)
       expect(data['posts'][0]['id']).to eq(awesome_post.id)
@@ -108,7 +108,7 @@ describe SearchController do
       }
 
       expect(response.status).to eq(200)
-      data = JSON.parse(response.body)
+      data = response.parsed_body
 
       expect(data['posts'][0]['id']).to eq(user_post.id)
       expect(data['users']).to be_blank
@@ -118,7 +118,7 @@ describe SearchController do
       }
 
       expect(response.status).to eq(200)
-      data = JSON.parse(response.body)
+      data = response.parsed_body
 
       expect(data['posts']).to be_blank
       expect(data['users'][0]['id']).to eq(user.id)
@@ -135,7 +135,7 @@ describe SearchController do
         }
 
         expect(response.status).to eq(200)
-        data = JSON.parse(response.body)
+        data = response.parsed_body
 
         expect(data['topics'][0]['id']).to eq(awesome_post.topic_id)
       end
@@ -149,7 +149,7 @@ describe SearchController do
         }
 
         expect(response.status).to eq(200)
-        data = JSON.parse(response.body)
+        data = response.parsed_body
 
         expect(data['topics'][0]['id']).to eq(user_post.topic_id)
       end
@@ -164,7 +164,7 @@ describe SearchController do
       expect(response.status).to eq(200)
       expect(SearchLog.where(term: 'wookie')).to be_present
 
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       search_log_id = json['grouped_search_result']['search_log_id']
       expect(search_log_id).to be_present
 
@@ -178,6 +178,61 @@ describe SearchController do
       get "/search/query.json", params: { term: 'wookie' }
       expect(response.status).to eq(200)
       expect(SearchLog.where(term: 'wookie')).to be_blank
+    end
+
+    context 'rate limited' do
+      before do
+        SiteSetting.rate_limit_search_user = 3
+        SiteSetting.rate_limit_search_anon = 2
+      end
+
+      it 'rate limits searches' do
+        RateLimiter.enable
+        RateLimiter.clear_all!
+
+        2.times do
+          get "/search/query.json", params: {
+                term: 'wookie'
+              }
+
+          expect(response.status).to eq(200)
+          json = response.parsed_body
+          expect(json["grouped_search_result"]["error"]).to eq(nil)
+        end
+
+        get "/search/query.json", params: {
+              term: 'wookie'
+            }
+        expect(response.status).to eq(200)
+        json = response.parsed_body
+        expect(json["grouped_search_result"]["error"]).to eq(I18n.t("rate_limiter.slow_down"))
+      end
+
+      context "and a logged in user" do
+        before { sign_in(user) }
+
+        it 'rate limits logged in searches' do
+          RateLimiter.enable
+          RateLimiter.clear_all!
+
+          3.times do
+            get "/search/query.json", params: {
+                  term: 'wookie'
+                }
+
+            expect(response.status).to eq(200)
+            json = response.parsed_body
+            expect(json["grouped_search_result"]["error"]).to eq(nil)
+          end
+
+          get "/search/query.json", params: {
+                term: 'wookie'
+              }
+          expect(response.status).to eq(200)
+          json = response.parsed_body
+          expect(json["grouped_search_result"]["error"]).to eq(I18n.t("rate_limiter.slow_down"))
+        end
+      end
     end
   end
 
@@ -216,6 +271,63 @@ describe SearchController do
       get "/search.json", params: { q: 'bantha' }
       expect(response.status).to eq(200)
       expect(SearchLog.where(term: 'bantha')).to be_blank
+    end
+
+    context 'rate limited' do
+
+      before do
+        SiteSetting.rate_limit_search_user = 3
+        SiteSetting.rate_limit_search_anon = 2
+      end
+
+      it 'rate limits searches' do
+        RateLimiter.enable
+        RateLimiter.clear_all!
+
+        2.times do
+          get "/search.json", params: {
+                q: 'bantha'
+              }
+
+          expect(response.status).to eq(200)
+          json = response.parsed_body
+          expect(json["grouped_search_result"]["error"]).to eq(nil)
+        end
+
+        get "/search.json", params: {
+              q: 'bantha'
+            }
+        expect(response.status).to eq(200)
+        json = response.parsed_body
+        expect(json["grouped_search_result"]["error"]).to eq(I18n.t("rate_limiter.slow_down"))
+
+      end
+
+      context "and a logged in user" do
+        before { sign_in(user) }
+
+        it 'rate limits searches' do
+          RateLimiter.enable
+          RateLimiter.clear_all!
+
+          3.times do
+            get "/search.json", params: {
+                  q: 'bantha'
+                }
+
+            expect(response.status).to eq(200)
+            json = response.parsed_body
+            expect(json["grouped_search_result"]["error"]).to eq(nil)
+          end
+
+          get "/search.json", params: {
+                q: 'bantha'
+              }
+          expect(response.status).to eq(200)
+          json = response.parsed_body
+          expect(json["grouped_search_result"]["error"]).to eq(I18n.t("rate_limiter.slow_down"))
+        end
+      end
     end
   end
 
@@ -257,7 +369,7 @@ describe SearchController do
     it "sort posts with search priority when search term is empty" do
       get "/search.json", params: { q: 'status:open' }
       expect(response.status).to eq(200)
-      data = JSON.parse(response.body)
+      data = response.parsed_body
       post1 = data["posts"].find { |e| e["id"] == old_very_hight_priority_post.id }
       post2 = data["posts"].find { |e| e["id"] == low_priority_post.id }
       expect(data["posts"][0]["id"]).to eq(old_very_hight_priority_post.id)
@@ -267,7 +379,7 @@ describe SearchController do
     it "sort posts with search priority when no order query" do
       get "/search.json", params: { q: 'status:open Priority Post' }
       expect(response.status).to eq(200)
-      data = JSON.parse(response.body)
+      data = response.parsed_body
       expect(data["posts"][0]["id"]).to eq(old_very_hight_priority_post.id)
       expect(data["posts"][1]["id"]).to eq(hight_priority_post.id)
       expect(data["posts"][2]["id"]).to eq(low_priority_post.id)
@@ -276,7 +388,7 @@ describe SearchController do
     it "doesn't sort posts with search piority when query with order" do
       get "/search.json", params: { q: 'status:open order:latest Priority Post' }
       expect(response.status).to eq(200)
-      data = JSON.parse(response.body)
+      data = response.parsed_body
       expect(data["posts"][0]["id"]).to eq(hight_priority_post.id)
       expect(data["posts"][1]["id"]).to eq(low_priority_post.id)
       expect(data["posts"][2]["id"]).to eq(old_very_hight_priority_post.id)

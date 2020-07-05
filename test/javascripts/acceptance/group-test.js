@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import selectKit from "helpers/select-kit-helper";
 import { acceptance } from "helpers/qunit-helpers";
 import pretender from "helpers/create-pretender";
@@ -27,7 +28,7 @@ QUnit.test("Anonymous Viewing Group", async assert => {
   assert.equal(
     count(".nav-pills li a[title='Messages']"),
     0,
-    "it deos not show group messages navigation link"
+    "it does not show group messages navigation link"
   );
 
   await click(".nav-pills li a[title='Activity']");
@@ -82,7 +83,7 @@ QUnit.test("Anonymous Viewing Automatic Group", async assert => {
   assert.equal(
     count(".nav-pills li a[title='Manage']"),
     0,
-    "it deos not show group messages navigation link"
+    "it does not show group messages navigation link"
   );
 });
 

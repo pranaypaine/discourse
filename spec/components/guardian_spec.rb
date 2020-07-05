@@ -890,12 +890,9 @@ describe Guardian do
           expect(Guardian.new(moderator).can_see?(post_revision)).to be_truthy
         end
 
-        it 'is true for trust level 4' do
-          expect(Guardian.new(trust_level_4).can_see?(post_revision)).to be_truthy
-        end
-
-        it 'is false for trust level lower than 4' do
+        it 'is false for trust level equal or lower than 4' do
           expect(Guardian.new(trust_level_3).can_see?(post_revision)).to be_falsey
+          expect(Guardian.new(trust_level_4).can_see?(post_revision)).to be_falsey
         end
       end
     end
@@ -2869,6 +2866,32 @@ describe Guardian do
     let!(:theme) { Fabricate(:theme) }
     let!(:theme2) { Fabricate(:theme) }
 
+    context "whitelist mode" do
+      before do
+        GlobalSetting.reset_whitelisted_theme_ids!
+        global_setting :whitelisted_theme_repos, "  https://magic.com/repo.git, https://x.com/git"
+      end
+
+      after do
+        GlobalSetting.reset_whitelisted_theme_ids!
+      end
+
+      it "should respect theme whitelisting" do
+        r = RemoteTheme.create!(remote_url: "https://magic.com/repo.git")
+        theme.update!(remote_theme_id: r.id)
+
+        guardian = Guardian.new(admin)
+
+        expect(guardian.allow_themes?([theme.id, theme2.id], include_preview: true)).to eq(false)
+
+        expect(guardian.allow_themes?([theme.id], include_preview: true)).to eq(true)
+
+        expect(guardian.allowed_theme_repo_import?('https://x.com/git')).to eq(true)
+        expect(guardian.allowed_theme_repo_import?('https:/evil.com/git')).to eq(false)
+
+      end
+    end
+
     it "allows staff to use any themes" do
       expect(Guardian.new(moderator).allow_themes?([theme.id, theme2.id])).to eq(false)
       expect(Guardian.new(admin).allow_themes?([theme.id, theme2.id])).to eq(false)
@@ -3420,8 +3443,23 @@ describe Guardian do
       end
     end
 
+    context 'trust_level >= 2 user' do
+      fab!(:topic_creator) { build(:user, trust_level: 2) }
+      fab!(:topic) { Fabricate(:topic, user: topic_creator) }
+
+      before do
+        topic.allowed_users << topic_creator
+        topic.allowed_users << another_user
+      end
+
+      it 'should be true' do
+        expect(Guardian.new(topic_creator).can_remove_allowed_users?(topic))
+          .to eq(true)
+      end
+    end
+
     context 'normal user' do
-      fab!(:topic) { Fabricate(:topic, user: Fabricate(:user)) }
+      fab!(:topic) { Fabricate(:topic, user: Fabricate(:user, trust_level: 1)) }
 
       before do
         topic.allowed_users << user
@@ -3463,6 +3501,21 @@ describe Guardian do
           expect(Guardian.new(user).can_remove_allowed_users?(topic, moderator))
             .to eq(false)
         end
+      end
+    end
+
+    context "anonymous users" do
+      fab!(:topic) { Fabricate(:topic) }
+
+      it 'should be false' do
+        expect(Guardian.new.can_remove_allowed_users?(topic)).to eq(false)
+      end
+
+      it 'should be false when the topic does not have a user (for example because the user was removed)' do
+        DB.exec("UPDATE topics SET user_id=NULL WHERE id=#{topic.id}")
+        topic.reload
+
+        expect(Guardian.new.can_remove_allowed_users?(topic)).to eq(false)
       end
     end
   end

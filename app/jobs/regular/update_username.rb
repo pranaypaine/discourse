@@ -36,6 +36,7 @@ module Jobs
       update_post_custom_fields
 
       DiscourseEvent.trigger(:username_changed, @old_username, @new_username)
+      DiscourseEvent.trigger(:user_updated, User.find_by(id: @user_id))
     end
 
     def update_posts
@@ -158,7 +159,7 @@ module Jobs
 
       doc.css("a.mention").each do |a|
         a.content = a.content.gsub(@cooked_mention_username_regex, "@#{@new_username}")
-        a["href"] = a["href"].gsub(@cooked_mention_user_path_regex, "/u/#{URI.escape(@new_username)}") if a["href"]
+        a["href"] = a["href"].gsub(@cooked_mention_user_path_regex, "/u/#{UrlHelper.encode_component(@new_username)}") if a["href"]
       end
 
       doc.css("aside.quote").each do |aside|

@@ -1,13 +1,16 @@
+import getURL from "discourse-common/lib/get-url";
 import discourseDebounce from "discourse/lib/debounce";
 import { CANCELLED_STATUS } from "discourse/lib/autocomplete";
 import Category from "discourse/models/category";
 import { TAG_HASHTAG_POSTFIX } from "discourse/lib/tag-hashtags";
 import { SEPARATOR } from "discourse/lib/category-hashtags";
 import { Promise } from "rsvp";
+import { later, cancel } from "@ember/runloop";
+import { isTesting } from "discourse-common/config/environment";
 
-var cache = {};
-var cacheTime;
-var oldSearch;
+let cache = {};
+let cacheTime;
+let oldSearch;
 
 function updateCache(term, results) {
   cache[term] = results;
@@ -17,12 +20,15 @@ function updateCache(term, results) {
 
 function searchTags(term, categories, limit) {
   return new Promise(resolve => {
-    const clearPromise = setTimeout(() => {
-      resolve(CANCELLED_STATUS);
-    }, 5000);
+    const clearPromise = later(
+      () => {
+        resolve(CANCELLED_STATUS);
+      },
+      isTesting() ? 50 : 5000
+    );
 
     const debouncedSearch = discourseDebounce((q, cats, resultFunc) => {
-      oldSearch = $.ajax(Discourse.getURL("/tags/filter/search"), {
+      oldSearch = $.ajax(getURL("/tags/filter/search"), {
         type: "GET",
         cache: true,
         data: { limit: limit, q }
@@ -55,7 +61,7 @@ function searchTags(term, categories, limit) {
     }, 300);
 
     debouncedSearch(term, categories, result => {
-      clearTimeout(clearPromise);
+      cancel(clearPromise);
       resolve(updateCache(term, result));
     });
   });

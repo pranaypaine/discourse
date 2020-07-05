@@ -45,7 +45,6 @@ es:
       unrecognized_extension: "Extensión de archivo no reconocida: %{extension}"
     import_error:
       generic: Se produjo un error al importar ese tema
-      about_json: "Error de importación: about.json no existe, o es inválido"
       about_json_values: "about.json contiene valores inválidos: %{errors}"
       modifier_values: "los modificadores about.json contienen valores inválidos: %{errors}"
       git: "Error al clonar el repositorio git, se deniega el acceso o no se encuentra el repositorio"
@@ -335,7 +334,6 @@ es:
       already_bookmarked_post: "No puedes guardar la misma publicación en marcadores dos veces."
       cannot_set_past_reminder: "No puedes establecer un recordatorio de marcador en el pasado."
       cannot_set_reminder_in_distant_future: "No puedes establecer un recordatorio de marcador más de 10 años en el futuro."
-      time_must_be_provided: "se debe especificar la hora para todos los recordatorios excepto '%{reminder_type}'"
     reminders:
       at_desktop: "La próxima vez que esté en mi ordenador"
       later_today: "Más tarde, hoy"
@@ -373,6 +371,10 @@ es:
       trust_level_4: "nivel_de_confianza_4"
     request_membership_pm:
       title: "Solicitud de membresía para @%{group_name}"
+    request_accepted_pm:
+      title: "Te han aceptado para el grupo @%{group_name}"
+      body: |
+        Tu solicitud para entrar al grupo @%{group_name} ha sido aceptada y ahora eres parte de él.
     view_hidden_topic_request_reason: "Me gustaría unirme al grupo «%{group_name}» para poder acceder a [este tema](%{topic_url})"
   education:
     until_posts:
@@ -414,12 +416,6 @@ es:
       Puedes editar tu respuesta previa para añadir una cita seleccionando el texto y pulsando en el botón <b>citar respuesta</b> que aparecerá.
 
       Es más fácil para todos leer temas con menos respuestas pero más profundas que muchas respuestas pequeñas individuales.
-    dominating_topic: |
-      ### Deja a los demás unirse a la conversación
-
-      Este tema claramente es muy importante para ti &ndash; has publicado más del %{percent}% de las respuestas aquí.
-
-      Podría ser incluso mejor si también le das espacio a otras personas para que compartan sus puntos de vista. ¿Puedes invitarlos?
     get_a_room: |
       ### Anima a todos a participar en la conversación
 
@@ -545,7 +541,7 @@ es:
     title: "Te damos la bienvenida a la Sala VIP"
     body: |2
 
-      ¡Felicitaciones! :confetti_ball:
+      ¡Enhorabuena! :confetti_ball:
 
       Si puedes ver este tema, es que has sido promovido a usuario **habitual** (nivel de confianza 3).
 
@@ -755,7 +751,6 @@ es:
     confirm: "Confirmar"
     authorizing_new:
       title: "Confirmar tu nuevo correo electrónico"
-      description: "Por favor, confirma que quisieras cambiar tu correo electrónico por el nuevo: "
     authorizing_old:
       title: "Cambiar tu dirección de correo electrónico"
       description: "Por favor, confirma el cambio de tu dirección de correo electrónico"
@@ -803,7 +798,7 @@ es:
       short_description: 'Infringe <a href="%{base_path}/guidelines">nuestras directrices de la comunidad</a>'
       long_form: "reportado como inapropiado"
     notify_user:
-      title: "Enviar un mensaje a @{{username}}"
+      title: "Enviar un mensaje a @%{username}"
       description: "Quiero hablar con esta persona directamente y personalmente sobre su publicación."
       short_description: "Quiero hablar con esta persona directamente y personalmente sobre su publicación."
       long_form: "usuario notificado por mensaje"
@@ -1342,7 +1337,6 @@ es:
     crawl_images: "Recuperar imágenes desde URLs remotas para insertarlas con las dimensiones correctas de ancho y de largo."
     download_remote_images_to_local: "Convertir imágenes remotas a imágenes locales descargándolas; esto previene imágenes rotas."
     download_remote_images_threshold: "Espacio mínimo en el disco necesario para descargar imágenes remotas de forma local (porcentaje)"
-    download_remote_images_max_days_old: "No descargar imágenes remotas de publicaciones que tengan más de n días de antigüedad."
     disabled_image_download_domains: "Las imágenes remotas que provengan de estos dominios no serán descargadas. Lista delimitada por barras."
     editing_grace_period: "Durante (n) segundos después de que se publique algún mensaje, se puede editar la publicación sin crear una nueva versión en el historial."
     editing_grace_period_max_diff: "Número máximo de cambios de caracteres permitidos en el período de gracia de edición, si hay más cambios, almacenar otra revisión de publicación (nivel de confianza 0 y 1)"
@@ -1535,7 +1529,6 @@ es:
     s3_backup_bucket: "El bucket remoto para mantener copias de respaldo. AVISO: Asegúrate de que es un bucket privado."
     s3_endpoint: "El endpoint se puede modificar para realizar una copia de respaldo en un servicio compatible con S3 como DigitalOcean Spaces o Minio. ADVERTENCIA: dejar en blanco si usas AWS S3."
     s3_configure_tombstone_policy: "Habilitar la política de eliminación automática para cargas tombstone. IMPORTANTE: si está deshabilitado, no se reclamará ningún espacio después de eliminar las cargas."
-    s3_disable_cleanup: "Desactivar el eliminado de respaldos de S3 cuando se eliminen de forma local."
     enable_s3_inventory: "Generar informes y verificar las cargas utilizando el inventario de Amazon S3. IMPORTANTE: requiere credenciales S3 válidas (tanto la clave de acceso como la clave de acceso secreta)."
     backup_time_of_day: "Hora UTC del día cuando debería ejecutarse el respaldo."
     backup_with_uploads: "Incluir archivos subidos en los respaldos programados. Si esta opción está deshabilitada, tan solo se ejecutará una copia de respaldo de la base de datos."
@@ -1934,7 +1927,6 @@ es:
     city_for_disputes: "Ciudad de disputas"
     shared_drafts_category: "Habilite la característica de borradores compartidos designando una categoría para borradores de temas. Los temas de esta categoría se eliminarán de las listas de temas para los miembros del staff."
     push_notifications_prompt: "Mostrar aviso del consentimiento del usuario."
-    push_notifications_icon: "El icono de la medalla que aparece en la esquina de notificación. El tamaño requerido es de 96 × 96."
     short_title: "El título corto se utilizará en la pantalla de inicio del usuario, el iniciador u otros lugares donde el espacio puede ser limitado. Debe limitarse a 12 caracteres."
     dashboard_general_tab_activity_metrics: "Selecciona los reportes que se muestran como medidas de actividad en la pestaña general."
     gravatar_name: "Nombre del proveedor de Gravatar"
@@ -2701,10 +2693,6 @@ es:
     email_reject_bad_destination_address:
       title: "Correo electrónico de rechazo. Dirección del destinatario incorrecta"
       subject_template: "[%{email_prefix}] Problema de correo electrónico -- Dirección desconocida"
-      text_body_template: |
-        Lo sentimos, tu correo electrónico para %{destination} (con el título %{former_title}) no funcionó.
-
-        Ninguna de las direcciones de correo electrónico fue reconocida o el encabezado de ID del mensaje en el correo ha sido modificado. Por favor, asegúrate de que estás enviando los correos a las direcciones correctas provistas por el staff.
     email_reject_old_destination:
       title: "Correo electrónico de rechazo. Destino antiguo"
       subject_template: "[%{email_prefix}] Problema de correo electrónico -- Estás intentando responder a una notificación antigua"
@@ -2882,7 +2870,7 @@ es:
       title: "¡Eres el usuario nuevo del mes!"
       subject_template: "¡Eres el usuario nuevo del mes!"
       text_body_template: |
-        ¡Felicitaciones! Ganaste el **premio de usuario nuevo del mes de%{month_year}**. :trophy:
+        ¡Enhorabuena! Has ganado el **premio de usuario nuevo del mes de%{month_year}**. :trophy:
 
         Este premio solo lo ganan dos de los nuevos miembros de cada mes y será visible permanentemente en [la página de medallas](%{url}).
 
@@ -3240,6 +3228,8 @@ es:
         Confirma tu dirección de correo electrónico actual para %{site_name} haciendo clic en el siguiente enlace:
 
         %{base_url}/u/confirm-old-email/%{email_token}
+    confirm_old_email_add:
+      subject_template: "[%{email_prefix}] Confirma tu dirección actual de correo electrónico"
     notify_old_email:
       title: "Antiguo correo electrónico de notificaciones"
       subject_template: "[%{email_prefix}] Tu dirección de correo electrónico ha sido cambiada"
@@ -3305,6 +3295,8 @@ es:
         Si has sido tú, ¡genial! No tienes que hacer más nada.
 
         Si no has sido tú, por favor, [revisa tus sesiones activas](%{base_url}/my/preferences/account) y considera cambiar tu contraseña.
+  page_forbidden:
+    title: "¡Ups! Esa página es privada."
   page_not_found:
     title: "¡Ups! Esa página no existe o es privada."
     popular_topics: "Destacados"
@@ -3791,7 +3783,7 @@ es:
       name: ¡Bienvenido/a!
       description: Recibió un me gusta
       long_description: |
-        Esta medalla se concede al recibir tu primer me gusta en una publicación. ¡Felicitaciones! Publicaste algo que los demás miembros de la comunidad han considerado útil, interesante o entretenido.
+        Esta medalla se concede al recibir tu primer me gusta en una publicación. ¡Enhorabuena! Publicaste algo que los demás miembros de la comunidad han considerado útil, interesante o entretenido.
     autobiographer:
       name: Autobiógrafo
       description: "Detalló información en su <a href=\"%{base_uri}/my/preferences/profile\">perfil</a> de usuario"
@@ -3938,7 +3930,6 @@ es:
         Esta medalla se concede cuando usas todos los %{max_likes_per_day} me gusta diarios por 5 días. ¡Gracias por tomarte tiempo en incentivar y premiar las mejores conversaciones cada día!
     crazy_in_love:
       name: Magnánimo
-      description: Utilizó 50 me gusta en un día 20 veces
       long_description: |
         Esta medalla se concede cuando usas todos los %{max_likes_per_day}de tus me gusta diarios por 20 días. ¡Wowl! ¡Eres un modelo a seguir por animar a los demás miembros de la comunidad!
     thank_you:
@@ -4032,7 +4023,7 @@ es:
     synonyms_exist: "no está permitido mientras existan sinónimos"
   rss_by_tag: "Temas con la etiqueta %{tag}"
   finish_installation:
-    congratulations: "¡Felicitaciones, has instalado Discourse!"
+    congratulations: "¡Enhorabuena, has instalado Discourse!"
     register:
       button: "Registrarse"
       title: "Registrar cuenta de administrador"

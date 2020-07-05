@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import discourseComputed from "discourse-common/utils/decorators";
 import { and, not, equal } from "@ember/object/computed";
 import Component from "@ember/component";
@@ -19,7 +20,7 @@ export default Component.extend({
   )
   formattedName(name, nameKey, isCustomFlag, username) {
     if (isCustomFlag) {
-      return name.replace("{{username}}", username);
+      return name.replace(/{{username}}|%{username}/, username);
     } else {
       return I18n.t("flagging.formatted_name." + nameKey);
     }

@@ -86,7 +86,7 @@ describe CookedPostProcessor do
       end
 
       after do
-        InlineOneboxer.purge(url)
+        InlineOneboxer.invalidate(url)
         Oneboxer.invalidate(url)
       end
 
@@ -97,10 +97,7 @@ describe CookedPostProcessor do
         cpp.post_process
 
         expect(cpp.html).to have_tag('a',
-          with: {
-            href: url,
-            class: described_class::INLINE_ONEBOX_CSS_CLASS
-          },
+          with: { href: url, class: "inline-onebox" },
           text: title,
           count: 2
         )
@@ -113,9 +110,7 @@ describe CookedPostProcessor do
         )
 
         expect(cpp.html).to have_tag('a',
-          without: {
-            class: described_class::INLINE_ONEBOX_LOADING_CSS_CLASS
-          },
+          without: { class: "inline-onebox-loading" },
           text: not_oneboxed_url,
           count: 1
         )
@@ -131,10 +126,6 @@ describe CookedPostProcessor do
     end
 
     describe 'when post contains inline oneboxes' do
-      let(:loading_css_class) do
-        described_class::INLINE_ONEBOX_LOADING_CSS_CLASS
-      end
-
       before do
         SiteSetting.enable_inline_onebox_on_all_domains = true
       end
@@ -148,12 +139,8 @@ describe CookedPostProcessor do
           cpp.post_process
 
           expect(cpp.html).to have_tag('a',
-            with: {
-              href: UrlHelper.cook_url(url)
-            },
-            without: {
-              class: loading_css_class
-            },
+            with: { href: UrlHelper.cook_url(url) },
+            without: { class: "inline-onebox-loading" },
             text: topic.title,
             count: 1
           )
@@ -163,12 +150,8 @@ describe CookedPostProcessor do
           cpp.post_process
 
           expect(cpp.html).to have_tag('a',
-            with: {
-              href: UrlHelper.cook_url(url)
-            },
-            without: {
-              class: loading_css_class
-            },
+            with: { href: UrlHelper.cook_url(url) },
+            without: { class: "inline-onebox-loading" },
             text: topic.title,
             count: 1
           )
@@ -227,7 +210,7 @@ describe CookedPostProcessor do
         end
 
         after do
-          urls.each { |url| InlineOneboxer.purge(url) }
+          urls.each { |url| InlineOneboxer.invalidate(url) }
         end
 
         it 'should convert the right links to inline oneboxes' do
@@ -235,33 +218,21 @@ describe CookedPostProcessor do
           html = cpp.html
 
           expect(html).to_not have_tag('a',
-            with: {
-              href: url_no_path
-            },
-            without: {
-              class: loading_css_class
-            },
+            with: { href: url_no_path },
+            without: { class: "inline-onebox-loading" },
             text: title
           )
 
           expect(html).to have_tag('a',
-            with: {
-              href: url_with_path
-            },
-            without: {
-              class: loading_css_class
-            },
+            with: { href: url_with_path },
+            without: { class: "inline-onebox-loading" },
             text: title,
             count: 2
           )
 
           expect(html).to have_tag('a',
-            with: {
-              href: url_with_query_param
-            },
-            without: {
-              class: loading_css_class
-            },
+            with: { href: url_with_query_param },
+            without: { class: "inline-onebox-loading" },
             text: title,
             count: 1
           )
@@ -1514,15 +1485,13 @@ describe CookedPostProcessor do
         expect(SiteSetting.download_remote_images_to_local).to eq(false)
       end
 
+      it "does not run when requested to skip" do
+        CookedPostProcessor.new(post, skip_pull_hotlinked_images: true).pull_hotlinked_images
+        expect(Jobs::PullHotlinkedImages.jobs.size).to eq(0)
+      end
+
       context "and there is enough disk space" do
-
         before { cpp.expects(:disable_if_low_on_disk_space) }
-
-        it "does not run when the system user updated the post" do
-          post.last_editor_id = Discourse.system_user.id
-          Jobs.expects(:cancel_scheduled_job).never
-          cpp.pull_hotlinked_images
-        end
 
         context "and the post has been updated by an actual user" do
 
@@ -1584,34 +1553,6 @@ describe CookedPostProcessor do
 
     end
 
-  end
-
-  context "#download_remote_images_max_days_old" do
-
-    let(:post) { build(:post, created_at: 20.days.ago) }
-    let(:cpp) { CookedPostProcessor.new(post) }
-
-    before do
-      SiteSetting.download_remote_images_to_local = true
-      cpp.expects(:disable_if_low_on_disk_space).returns(false)
-    end
-
-    it "does not run when download_remote_images_max_days_old is not satisfied" do
-      SiteSetting.download_remote_images_max_days_old = 15
-      Jobs.expects(:cancel_scheduled_job).never
-      cpp.pull_hotlinked_images
-    end
-
-    it "runs when download_remote_images_max_days_old is satisfied" do
-      SiteSetting.download_remote_images_max_days_old = 30
-
-      Jobs.expects(:cancel_scheduled_job).with(:pull_hotlinked_images, post_id: post.id).once
-
-      delay = SiteSetting.editing_grace_period + 1
-      Jobs.expects(:enqueue_in).with(delay.seconds, :pull_hotlinked_images, post_id: post.id).once
-
-      cpp.pull_hotlinked_images
-    end
   end
 
   context "#is_a_hyperlink?" do

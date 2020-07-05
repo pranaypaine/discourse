@@ -1,4 +1,7 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import Category from "discourse/models/category";
+import User from "discourse/models/user";
 import { isRTL } from "discourse/lib/text-direction";
 import { censor } from "pretty-text/censored-words";
 import { emojiUnescape } from "discourse/lib/text";
@@ -17,7 +20,7 @@ const Bookmark = RestModel.extend({
 
   @computed
   get url() {
-    return Discourse.getURL(`/bookmarks/${this.id}`);
+    return getURL(`/bookmarks/${this.id}`);
   },
 
   destroy() {
@@ -35,7 +38,7 @@ const Bookmark = RestModel.extend({
 
   // Helper to build a Url with a post number
   urlForPostNumber(postNumber) {
-    let url = Discourse.getURL(`/t/${this.topic_id}`);
+    let url = getURL(`/t/${this.topic_id}`);
     if (postNumber > 0) {
       url += `/${postNumber}`;
     }
@@ -113,7 +116,7 @@ const Bookmark = RestModel.extend({
   formattedReminder(bookmarkReminderAt, currentUser) {
     return formattedReminderTime(
       bookmarkReminderAt,
-      currentUser.resolvedTimezone()
+      currentUser.resolvedTimezone(currentUser)
     ).capitalize();
   },
 
@@ -135,6 +138,19 @@ const Bookmark = RestModel.extend({
       }
     }
     return ajax({ url: moreUrl });
+  },
+
+  @discourseComputed(
+    "post_user_username",
+    "post_user_avatar_template",
+    "post_user_name"
+  )
+  postUser(post_user_username, avatarTemplate, name) {
+    return User.create({
+      username: post_user_username,
+      avatar_template: avatarTemplate,
+      name: name
+    });
   }
 });
 

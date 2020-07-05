@@ -1,3 +1,5 @@
+import getURL from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import { isEmpty } from "@ember/utils";
 import EmberObject from "@ember/object";
 import { ajax } from "discourse/lib/ajax";
@@ -66,7 +68,7 @@ export function translateResults(results, opts) {
         flairBgColor,
         fullName,
         name,
-        url: Discourse.getURL(`/g/${name}`)
+        url: getURL(`/g/${name}`)
       };
     })
     .compact();
@@ -76,7 +78,7 @@ export function translateResults(results, opts) {
       const tagName = escapeExpression(tag.name);
       return EmberObject.create({
         id: tagName,
-        url: Discourse.getURL("/tag/" + tagName)
+        url: getURL("/tag/" + tagName)
       });
     })
     .compact();

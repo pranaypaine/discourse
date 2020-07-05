@@ -4,8 +4,6 @@
 # For example, inserting the onebox content, or image sizes/thumbnails.
 
 class CookedPostProcessor
-  INLINE_ONEBOX_LOADING_CSS_CLASS = "inline-onebox-loading"
-  INLINE_ONEBOX_CSS_CLASS = "inline-onebox"
   LIGHTBOX_WRAPPER_CSS_CLASS = "lightbox-wrapper"
   LOADING_SIZE = 10
   LOADING_COLORS = 32
@@ -218,7 +216,11 @@ class CookedPostProcessor
     # minus images inside quotes
     @doc.css(".quote img") -
     # minus onebox site icons
-    @doc.css("img.site-icon")
+    @doc.css("img.site-icon") -
+    # minus onebox avatars
+    @doc.css("img.onebox-avatar") -
+    # minus small onebox images (large images are .aspect-image-full-size)
+    @doc.css(".onebox .aspect-image img")
   end
 
   def oneboxed_images
@@ -518,7 +520,7 @@ class CookedPostProcessor
     oneboxes = {}
     inlineOneboxes = {}
 
-    Oneboxer.apply(@doc, extra_paths: [".#{INLINE_ONEBOX_LOADING_CSS_CLASS}"]) do |url, element|
+    Oneboxer.apply(@doc, extra_paths: [".inline-onebox-loading"]) do |url, element|
       is_onebox = element["class"] == Oneboxer::ONEBOX_CSS_CLASS
       map = is_onebox ? oneboxes : inlineOneboxes
       skip_onebox = limit <= 0 && !map[url]
@@ -661,12 +663,9 @@ class CookedPostProcessor
   end
 
   def pull_hotlinked_images
+    return if @opts[:skip_pull_hotlinked_images]
     # have we enough disk space?
     disable_if_low_on_disk_space # But still enqueue the job
-    # don't download remote images for posts that are more than n days old
-    return unless @post.created_at > (Date.today - SiteSetting.download_remote_images_max_days_old)
-    # we only want to run the job whenever it's changed by a user
-    return if @post.last_editor_id && @post.last_editor_id <= 0
     # make sure no other job is scheduled
     Jobs.cancel_scheduled_job(:pull_hotlinked_images, post_id: @post.id)
     # schedule the job
@@ -724,14 +723,14 @@ class CookedPostProcessor
 
     if title = inline_onebox&.dig(:title)
       element.children = CGI.escapeHTML(title)
-      element.add_class(INLINE_ONEBOX_CSS_CLASS)
+      element.add_class("inline-onebox")
     end
 
     remove_inline_onebox_loading_class(element)
   end
 
   def remove_inline_onebox_loading_class(element)
-    element.remove_class(INLINE_ONEBOX_LOADING_CSS_CLASS)
+    element.remove_class("inline-onebox-loading")
   end
 
   def is_svg?(img)

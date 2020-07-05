@@ -1,17 +1,17 @@
 import { next, run } from "@ember/runloop";
 import { applyDecorators, createWidget } from "discourse/widgets/widget";
-import { avatarAtts } from "discourse/widgets/actions-summary";
+import { smallUserAtts } from "discourse/widgets/actions-summary";
 import { h } from "virtual-dom";
 import showModal from "discourse/lib/show-modal";
 import { Promise } from "rsvp";
-import ENV from "discourse-common/config/environment";
+import { isTesting } from "discourse-common/config/environment";
 import { formattedReminderTime } from "discourse/lib/bookmark";
 
 const LIKE_ACTION = 2;
 const VIBRATE_DURATION = 5;
 
 function animateHeart($elem, start, end, complete) {
-  if (ENV.environment === "test") {
+  if (isTesting()) {
     return run(this, complete);
   }
 
@@ -51,10 +51,10 @@ function registerButton(name, builder) {
 }
 
 export function buildButton(name, widget) {
-  let { attrs, state, siteSettings, settings } = widget;
+  let { attrs, state, siteSettings, settings, currentUser } = widget;
   let builder = _builders[name];
   if (builder) {
-    let button = builder(attrs, state, siteSettings, settings);
+    let button = builder(attrs, state, siteSettings, settings, currentUser);
     if (button && !button.id) {
       button.id = name;
     }
@@ -287,48 +287,49 @@ registerButton("reply", (attrs, state, siteSettings, postMenuSettings) => {
   return args;
 });
 
-registerButton("bookmark", attrs => {
-  if (!attrs.canBookmark) {
-    return;
-  }
-
-  let classNames = ["bookmark", "with-reminder"];
-  let title = "bookmarks.not_bookmarked";
-  let titleOptions = { name: "" };
-
-  if (attrs.bookmarked) {
-    classNames.push("bookmarked");
-
-    if (attrs.bookmarkReminderAt) {
-      let formattedReminder = formattedReminderTime(
-        attrs.bookmarkReminderAt,
-        Discourse.currentUser.resolvedTimezone()
-      );
-      title = "bookmarks.created_with_reminder";
-      titleOptions.date = formattedReminder;
-    } else if (attrs.bookmarkReminderType === "at_desktop") {
-      title = "bookmarks.created_with_at_desktop_reminder";
-    } else {
-      title = "bookmarks.created";
+registerButton(
+  "bookmark",
+  (attrs, _state, _siteSettings, _settings, currentUser) => {
+    if (!attrs.canBookmark) {
+      return;
     }
 
-    if (attrs.bookmarkName) {
-      titleOptions.name = `. ${attrs.bookmarkName}`;
-    }
-  }
+    let classNames = ["bookmark", "with-reminder"];
+    let title = "bookmarks.not_bookmarked";
+    let titleOptions = { name: "" };
 
-  return {
-    id: attrs.bookmarked ? "unbookmark" : "bookmark",
-    action: "toggleBookmark",
-    title,
-    titleOptions,
-    className: classNames.join(" "),
-    icon:
-      attrs.bookmarkReminderAt || attrs.bookmarkReminderType === "at_desktop"
-        ? "discourse-bookmark-clock"
-        : "bookmark"
-  };
-});
+    if (attrs.bookmarked) {
+      classNames.push("bookmarked");
+
+      if (attrs.bookmarkReminderAt) {
+        let formattedReminder = formattedReminderTime(
+          attrs.bookmarkReminderAt,
+          currentUser.resolvedTimezone(currentUser)
+        );
+        title = "bookmarks.created_with_reminder";
+        titleOptions.date = formattedReminder;
+      } else {
+        title = "bookmarks.created";
+      }
+
+      if (attrs.bookmarkName) {
+        titleOptions.name = `. ${attrs.bookmarkName}`;
+      }
+    }
+
+    return {
+      id: attrs.bookmarked ? "unbookmark" : "bookmark",
+      action: "toggleBookmark",
+      title,
+      titleOptions,
+      className: classNames.join(" "),
+      icon:
+        attrs.bookmarkReminderAt || attrs.bookmarkReminderType === "at_desktop"
+          ? "discourse-bookmark-clock"
+          : "bookmark"
+    };
+  }
+);
 
 registerButton("admin", attrs => {
   if (!attrs.canManage && !attrs.canWiki) {
@@ -499,7 +500,13 @@ export default createWidget("post-menu", {
 
     Object.values(_extraButtons).forEach(builder => {
       if (builder) {
-        const buttonAtts = builder(attrs, this.state, this.siteSettings);
+        const buttonAtts = builder(
+          attrs,
+          this.state,
+          this.siteSettings,
+          this.settings,
+          this.currentUser
+        );
         if (buttonAtts) {
           const { position, beforeButton, afterButton } = buttonAtts;
           delete buttonAtts.position;
@@ -545,8 +552,21 @@ export default createWidget("post-menu", {
       postControls.push(repliesButton);
     }
 
-    let extraControls = applyDecorators(this, "extra-controls", attrs, state);
-    postControls.push(h("div.actions", visibleButtons.concat(extraControls)));
+    const extraControls = applyDecorators(this, "extra-controls", attrs, state);
+    const beforeExtraControls = applyDecorators(
+      this,
+      "before-extra-controls",
+      attrs,
+      state
+    );
+
+    const controlsButtons = [
+      ...beforeExtraControls,
+      ...visibleButtons,
+      ...extraControls
+    ];
+
+    postControls.push(h("div.actions", controlsButtons));
     if (state.adminVisible) {
       postControls.push(this.attach("post-admin-menu", attrs));
     }
@@ -676,7 +696,7 @@ export default createWidget("post-menu", {
         post_action_type_id: LIKE_ACTION
       })
       .then(users => {
-        state.likedUsers = users.map(avatarAtts);
+        state.likedUsers = users.map(smallUserAtts);
         state.total = users.totalRows;
       });
   },
@@ -685,7 +705,7 @@ export default createWidget("post-menu", {
     const { attrs, state } = this;
 
     return this.store.find("post-reader", { id: attrs.id }).then(users => {
-      state.readers = users.map(avatarAtts);
+      state.readers = users.map(smallUserAtts);
       state.totalReaders = users.totalRows;
     });
   },

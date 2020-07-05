@@ -1,7 +1,10 @@
+import I18n from "I18n";
 import discourseComputed from "discourse-common/utils/decorators";
 import EmberObject from "@ember/object";
 import { ajax } from "discourse/lib/ajax";
 import User from "discourse/models/user";
+import getURL from "discourse-common/lib/get-url";
+
 /**
   A model representing a Topic's details that aren't always present, such as a list of participants.
   When showing topics in lists and such this information should not be required.
@@ -55,17 +58,20 @@ const TopicDetails = RestModel.extend({
     } else {
       return I18n.t(localeString, {
         username: User.currentProp("username_lower"),
-        basePath: Discourse.BaseUri
+        basePath: getURL("/")
       });
     }
   },
 
-  updateNotifications(v) {
-    this.set("notification_level", v);
-    this.set("notifications_reason_id", null);
-    return ajax("/t/" + this.get("topic.id") + "/notifications", {
+  updateNotifications(level) {
+    return ajax(`/t/${this.get("topic.id")}/notifications`, {
       type: "POST",
-      data: { notification_level: v }
+      data: { notification_level: level }
+    }).then(() => {
+      this.setProperties({
+        notification_level: level,
+        notifications_reason_id: null
+      });
     });
   },
 

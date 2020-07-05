@@ -7,10 +7,6 @@
   vertical-align: middle;
   user-select: none;
 
-  &.is-hidden {
-    display: none;
-  }
-
   &.is-disabled {
     pointer-events: none;
   }
@@ -63,11 +59,18 @@
     flex-direction: row;
     min-height: 30px;
 
+    .d-icon-spinner {
+      -webkit-animation: rotate-forever 1s infinite linear;
+      animation: rotate-forever 1s infinite linear;
+    }
+
     .selected-name {
       text-align: left;
       flex: 0 1 auto;
+      align-items: center;
       color: inherit;
       display: flex;
+      outline: none;
 
       .d-icon + .name {
         margin-left: 0.5em;
@@ -105,6 +108,7 @@
 
     .caret-icon {
       margin-left: auto;
+      margin-right: 0;
       padding-left: 5px;
       pointer-events: none;
       color: inherit;
@@ -132,13 +136,13 @@
 
   .select-kit-row {
     cursor: pointer;
-    line-height: $line-height-medium;
     outline: none;
     display: flex;
     flex: 1 0 auto;
     box-sizing: border-box;
     align-items: center;
     justify-content: flex-start;
+    padding: 0.75em;
 
     .name {
       margin: 0;
@@ -183,7 +187,7 @@
     -webkit-overflow-scrolling: touch;
     margin: 0;
     padding: 0;
-    max-height: 200px;
+    max-height: 250px;
     width: 100%;
 
     .validation-message {

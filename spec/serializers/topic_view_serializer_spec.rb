@@ -19,7 +19,7 @@ describe TopicViewSerializer do
   fab!(:admin) { Fabricate(:admin) }
 
   describe '#featured_link and #featured_link_root_domain' do
-    let(:featured_link) { 'http://meta.discourse.org' }
+    fab!(:featured_link) { 'http://meta.discourse.org' }
 
     describe 'when topic featured link is disable' do
       it 'should return the right attributes' do
@@ -46,7 +46,7 @@ describe TopicViewSerializer do
   end
 
   describe '#image_url' do
-    let(:image_upload) { Fabricate(:image_upload, width: 5000, height: 5000) }
+    fab!(:image_upload) { Fabricate(:image_upload, width: 5000, height: 5000) }
 
     describe 'when a topic has an image' do
       before { topic.update!(image_upload_id: image_upload.id) }
@@ -54,13 +54,13 @@ describe TopicViewSerializer do
       it 'should return the image url' do
         json = serialize_topic(topic, user)
 
-        expect(json[:image_url]).to eq(image_upload.url)
+        expect(json[:image_url]).to end_with(image_upload.url)
       end
 
       it 'should have thumbnails' do
         SiteSetting.create_thumbnails = true
 
-        Discourse.redis.del(topic.thumbnail_job_redis_key([]))
+        Discourse.redis.del(topic.thumbnail_job_redis_key(Topic.thumbnail_sizes))
         json = nil
 
         expect do
@@ -90,7 +90,7 @@ describe TopicViewSerializer do
   end
 
   describe '#suggested_topics' do
-    let(:topic2) { Fabricate(:topic) }
+    fab!(:topic2) { Fabricate(:topic) }
 
     before do
       TopicUser.update_last_read(user, topic2.id, 0, 0, 0)
@@ -105,8 +105,8 @@ describe TopicViewSerializer do
     end
 
     describe 'when not loading last chunk' do
-      let(:post) { Fabricate(:post, topic: topic) }
-      let(:post2) { Fabricate(:post, topic: topic) }
+      fab!(:post) { Fabricate(:post, topic: topic) }
+      fab!(:post2) { Fabricate(:post, topic: topic) }
 
       it 'should not include suggested topics' do
         post
@@ -118,12 +118,46 @@ describe TopicViewSerializer do
         expect(json[:suggested_topics]).to eq(nil)
       end
     end
+
+    describe 'with private messages' do
+      fab!(:topic) do
+        Fabricate(:private_message_topic,
+          highest_post_number: 1,
+          topic_allowed_users: [
+            Fabricate.build(:topic_allowed_user, user: user)
+          ]
+        )
+      end
+
+      fab!(:topic2) do
+        Fabricate(:private_message_topic,
+          highest_post_number: 1,
+          topic_allowed_users: [
+            Fabricate.build(:topic_allowed_user, user: user)
+          ]
+        )
+      end
+
+      it 'includes suggested topics' do
+        TopicUser.change(user, topic2.id, notification_level: TopicUser.notification_levels[:tracking])
+
+        json = serialize_topic(topic, user)
+        expect(json[:suggested_topics].map { |t| t[:id] }).to contain_exactly(topic2.id)
+      end
+
+      it 'does not include suggested topics if all PMs are read' do
+        TopicUser.update_last_read(user, topic2.id, 1, 1, 0)
+
+        json = serialize_topic(topic, user)
+        expect(json[:suggested_topics]).to eq([])
+      end
+    end
   end
 
   describe 'when tags added to private message topics' do
-    let(:moderator) { Fabricate(:moderator) }
-    let(:tag) { Fabricate(:tag) }
-    let(:pm) do
+    fab!(:moderator) { Fabricate(:moderator) }
+    fab!(:tag) { Fabricate(:tag) }
+    fab!(:pm) do
       Fabricate(:private_message_topic, tags: [tag], topic_allowed_users: [
         Fabricate.build(:topic_allowed_user, user: moderator),
         Fabricate.build(:topic_allowed_user, user: user)
@@ -158,12 +192,12 @@ describe TopicViewSerializer do
   end
 
   describe 'with hidden tags' do
-    let(:hidden_tag) { Fabricate(:tag, name: 'hidden') }
-    let(:staff_tag_group) { Fabricate(:tag_group, permissions: { "staff" => 1 }, tag_names: [hidden_tag.name]) }
+    fab!(:hidden_tag) { Fabricate(:tag, name: 'hidden') }
+    fab!(:staff_tag_group) { Fabricate(:tag_group, permissions: { "staff" => 1 }, tag_names: [hidden_tag.name]) }
 
     before do
       SiteSetting.tagging_enabled = true
-      staff_tag_group
+      hidden_tag.tag_groups << staff_tag_group
       topic.tags << hidden_tag
     end
 
@@ -179,8 +213,8 @@ describe TopicViewSerializer do
   end
 
   context "with flags" do
-    let!(:post) { Fabricate(:post, topic: topic) }
-    let!(:other_post) { Fabricate(:post, topic: topic) }
+    fab!(:post) { Fabricate(:post, topic: topic) }
+    fab!(:other_post) { Fabricate(:post, topic: topic) }
 
     it "will return reviewable counts on posts" do
       r = PostActionCreator.inappropriate(Fabricate(:user), post).reviewable
@@ -205,7 +239,7 @@ describe TopicViewSerializer do
         SiteSetting.approve_post_count = 1
       end
 
-      let!(:queued_post) do
+      fab!(:queued_post) do
         ReviewableQueuedPost.needs_review!(
           topic: topic,
           payload: { raw: "hello my raw contents" },
@@ -312,22 +346,36 @@ describe TopicViewSerializer do
   context "published_page" do
     fab!(:published_page) { Fabricate(:published_page, topic: topic) }
 
-    it "doesn't return the published page if not enabled" do
-      json = serialize_topic(topic, admin)
-      expect(json[:published_page]).to be_blank
+    context "page publishing is disabled" do
+      before do
+        SiteSetting.enable_page_publishing = false
+      end
+
+      it "doesn't return the published page if not enabled" do
+        json = serialize_topic(topic, admin)
+        expect(json[:published_page]).to be_blank
+      end
     end
 
-    it "doesn't return the published page unless staff" do
-      SiteSetting.enable_page_publishing = true
-      json = serialize_topic(topic, user)
-      expect(json[:published_page]).to be_blank
-    end
+    context "page publishing is enabled" do
+      before do
+        SiteSetting.enable_page_publishing = true
+      end
 
-    it "returns the published page if enabled and staff" do
-      SiteSetting.enable_page_publishing = true
-      json = serialize_topic(topic, admin)
-      expect(json[:published_page]).to be_present
-      expect(json[:published_page][:slug]).to eq("published-page-test")
+      context "not staff" do
+        it "doesn't return the published page" do
+          json = serialize_topic(topic, user)
+          expect(json[:published_page]).to be_blank
+        end
+      end
+
+      context "staff" do
+        it "returns the published page" do
+          json = serialize_topic(topic, admin)
+          expect(json[:published_page]).to be_present
+          expect(json[:published_page][:slug]).to eq(published_page.slug)
+        end
+      end
     end
   end
 

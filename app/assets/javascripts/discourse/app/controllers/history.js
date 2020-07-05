@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import discourseComputed from "discourse-common/utils/decorators";
 import { alias, gt, not, or, equal } from "@ember/object/computed";
 import Controller from "@ember/controller";
@@ -57,6 +58,11 @@ export default Controller.extend(ModalFunctionality, {
         total
       }
     );
+  },
+
+  @discourseComputed("previousVersion")
+  revertToRevisionText(revision) {
+    return I18n.t("post.revisions.controls.revert", { revision });
   },
 
   refresh(postId, postVersion) {
@@ -260,9 +266,10 @@ export default Controller.extend(ModalFunctionality, {
       this.set("bodyDiff", html);
     } else {
       const opts = {
-        features: { editHistory: true },
+        features: { editHistory: true, historyOneboxes: true },
         whiteListed: {
-          editHistory: { custom: (tag, attr) => attr === "class" }
+          editHistory: { custom: (tag, attr) => attr === "class" },
+          historyOneboxes: ["header", "article", "div[style]"]
         }
       };
 

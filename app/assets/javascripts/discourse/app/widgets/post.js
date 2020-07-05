@@ -1,3 +1,5 @@
+import { default as getURL, getURLWithCDN } from "discourse-common/lib/get-url";
+import I18n from "I18n";
 import PostCooked from "discourse/widgets/post-cooked";
 import DecoratorHelper from "discourse/widgets/decorator-helper";
 import { createWidget, applyDecorators } from "discourse/widgets/widget";
@@ -42,7 +44,7 @@ export function avatarImg(wanted, attrs) {
       alt: "",
       width: size,
       height: size,
-      src: Discourse.getURLWithCDN(url),
+      src: getURLWithCDN(url),
       title
     },
     className
@@ -352,7 +354,7 @@ createWidget("post-group-request", {
   },
 
   html(attrs) {
-    const href = Discourse.getURL(
+    const href = getURL(
       "/g/" + attrs.requestedGroupName + "/requests?filter=" + attrs.username
     );
 
@@ -556,7 +558,9 @@ createWidget("post-article", {
 
   html(attrs, state) {
     const rows = [
-      h("a.tabLoc", { attributes: { href: "", "aria-hidden": true } })
+      h("a.tabLoc", {
+        attributes: { href: "", "aria-hidden": true, tabindex: -1 }
+      })
     ];
     if (state.repliesAbove.length) {
       const replies = state.repliesAbove.map(p => {

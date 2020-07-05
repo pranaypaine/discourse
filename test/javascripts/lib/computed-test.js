@@ -1,3 +1,4 @@
+import I18n from "I18n";
 import EmberObject from "@ember/object";
 import {
   setting,
@@ -8,6 +9,7 @@ import {
   url,
   htmlSafe
 } from "discourse/lib/computed";
+import { setPrefix } from "discourse-common/lib/get-url";
 
 QUnit.module("lib:computed", {
   beforeEach() {
@@ -147,7 +149,7 @@ QUnit.test("url", assert => {
     "it supports urls without a prefix"
   );
 
-  Discourse.BaseUri = "/prefixed";
+  setPrefix("/prefixed");
   t = testClass.create({ username: "eviltrout" });
   assert.equal(
     t.get("userUrl"),
